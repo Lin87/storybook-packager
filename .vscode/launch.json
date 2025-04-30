@@ -1,0 +1,24 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "Next.js: Dev",
+        "type": "node",
+        "request": "launch",
+        "program": "${workspaceFolder}/node_modules/next/dist/bin/next",
+        "args": ["dev"],
+        "cwd": "${workspaceFolder}",
+        "console": "integratedTerminal"
+      },
+      {
+        "name": "Electron: Main",
+        "type": "node",
+        "request": "launch",
+        "program": "${workspaceFolder}/node_modules/electron/dist/electron.js",
+        "args": ["."],
+        "cwd": "${workspaceFolder}",
+        "windows": { "program": "${workspaceFolder}/node_modules/.bin/electron.cmd" }
+      }
+    ]
+  }
+  

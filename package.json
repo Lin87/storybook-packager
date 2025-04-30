@@ -1,0 +1,75 @@
+{
+  "name": "storybook-packager",
+  "description": "Storybook Packager desktop application",
+  "author": "Ethan Lin <elin@excelsior.edu>",
+  "version": "0.1.0",
+  "main": "electron/main.mjs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev:next": "next dev --turbopack",
+    "dev:electron": "wait-on http://localhost:3000 && cross-env ELECTRON_START_URL=http://localhost:3000 electron electron/main.mjs",
+    "dev": "concurrently \"npm run dev:next\" \"npm run dev:electron\"",
+    "build:next": "next build",
+    "predist": "node -e \"require('fs').mkdirSync('node_modules/@img/sharp-darwin-arm64', { recursive: true });\"",
+    "dist": "npm run build:next && electron-builder"
+  },
+  "build": {
+    "appId": "edu.excelsior.storybook-packager",
+    "directories": {
+      "buildResources": "assets",
+      "output": "dist"
+    },
+    "files": [
+      "out/**/*",
+      "electron/main.mjs",
+      "electron/preload.mjs",
+      "package.json"
+    ],
+    "win": {
+      "files": [
+        "out/**/*",
+        "electron/main.mjs",
+        "electron/preload.mjs",
+        "package.json",
+        "!**/node_modules/@img/sharp-darwin-arm64",
+        "!node_modules/@img/sharp-darwin-arm64"
+      ],
+      "target": [
+        "nsis"
+      ]
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ]
+    }
+  },
+  "dependencies": {
+    "next": "15.3.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "sharp": "^0.34.1"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "concurrently": "^9.1.2",
+    "cross-env": "^7.0.3",
+    "electron": "^36.0.0",
+    "electron-builder": "^26.0.12",
+    "eslint": "^9",
+    "eslint-config-next": "15.3.1",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "wait-on": "^8.0.3"
+  }
+}
