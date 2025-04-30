@@ -7,9 +7,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev:next": "next dev --turbopack",
+    "dev:next": "next dev",
     "dev:electron": "wait-on http://localhost:3000 && cross-env ELECTRON_START_URL=http://localhost:3000 electron electron/main.mjs",
     "dev": "concurrently \"npm run dev:next\" \"npm run dev:electron\"",
+    "start": "next start",
     "build:next": "next build",
     "predist": "node -e \"require('fs').mkdirSync('node_modules/@img/sharp-darwin-arm64', { recursive: true });\"",
     "dist": "npm run build:next && electron-builder"
@@ -17,7 +18,7 @@
   "build": {
     "appId": "edu.excelsior.storybook-packager",
     "directories": {
-      "buildResources": "assets",
+      "buildResources": "public/icons",
       "output": "dist"
     },
     "files": [
@@ -27,6 +28,7 @@
       "package.json"
     ],
     "win": {
+      "icon": "icon.ico",
       "files": [
         "out/**/*",
         "electron/main.mjs",
@@ -40,17 +42,20 @@
       ]
     },
     "mac": {
+      "icon": "icon.icns",
       "target": [
         "dmg"
       ]
     },
     "linux": {
+      "icon": "icon.png",
       "target": [
         "AppImage"
       ]
     }
   },
   "dependencies": {
+    "electron-default-menu": "^1.0.2",
     "next": "15.3.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -64,6 +69,7 @@
     "@types/react-dom": "^19",
     "concurrently": "^9.1.2",
     "cross-env": "^7.0.3",
+    "daisyui": "^5.0.32",
     "electron": "^36.0.0",
     "electron-builder": "^26.0.12",
     "eslint": "^9",
