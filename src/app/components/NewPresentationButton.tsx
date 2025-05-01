@@ -2,11 +2,7 @@
 
 import { useState } from "react";
 
-interface NewPresentationButtonProps {
-    onCreated?: (path: string) => void;
-}
-
-function NewPresentationButton({ onCreated }: NewPresentationButtonProps) {
+function NewPresentationButton() {
     const [loading, setLoading] = useState(false);
 
     const handleNew = async () => {
@@ -25,8 +21,9 @@ function NewPresentationButton({ onCreated }: NewPresentationButtonProps) {
                 return;
             }
 
-            console.log("New presentation created at:", result);
-            onCreated?.(result);
+            if (typeof result === "string") {
+                window.electronAPI.openEditorWindow(result);
+            }
         } finally {
             setLoading(false);
         }

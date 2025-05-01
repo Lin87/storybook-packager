@@ -7,9 +7,9 @@ declare global {
             openPresentation: () => Promise<string | null>;
             getRecent: () => Promise<string[]>;
             openFile: () => Promise<string | null>;
-            openEditorWindow?: () => void;
             minimize: () => void;
             close: () => void;
+            openEditorWindow: (presentationPath: string) => Promise<void>;
         };
     }
 }

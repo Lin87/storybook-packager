@@ -69,6 +69,30 @@ function registerIpcHandlers() {
         }
         return [];
     });
+
+    ipcMain.handle("open-editor-window", (_event, presentationPath: string) => {
+        const editorWindow = new BrowserWindow({
+            width: 1024,
+            height: 768,
+            title: "Storybook Editor",
+            webPreferences: {
+                preload: path.join(__dirname, "preload.cjs"),
+                contextIsolation: true,
+                nodeIntegration: false,
+            },
+        });
+
+        // Load editor.html or a route if using Next.js
+        const editorURL = process.env.ELECTRON_START_URL ? `${process.env.ELECTRON_START_URL}/editor?path=${encodeURIComponent(presentationPath)}` : `file://${path.join(__dirname, "../out/editor.html")}`; // fallback for export
+
+        editorWindow.loadURL(editorURL);
+
+        // close the welcome window
+        if (welcomeWindow && !welcomeWindow.isDestroyed()) {
+            welcomeWindow.close();
+            welcomeWindow = null;
+        }
+    });
 }
 
 function createWelcomeWindow() {
