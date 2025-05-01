@@ -2,6 +2,8 @@ import { app, BrowserWindow, ipcMain, dialog } from "electron";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
+import { parseStringPromise } from "xml2js";
+import { StorybookXml } from '../src/types/sbplus';
 
 // Required to get __dirname in ES module context
 const __filename = fileURLToPath(import.meta.url);
@@ -75,6 +77,7 @@ function registerIpcHandlers() {
             width: 1024,
             height: 768,
             title: "Storybook Editor",
+            icon: path.join(__dirname, "../public/icons/icon.png"),
             webPreferences: {
                 preload: path.join(__dirname, "preload.cjs"),
                 contextIsolation: true,
@@ -91,6 +94,27 @@ function registerIpcHandlers() {
         if (welcomeWindow && !welcomeWindow.isDestroyed()) {
             welcomeWindow.close();
             welcomeWindow = null;
+        }
+    });
+
+    ipcMain.handle("load-presentation-data", async (_event, presentationPath: string) => {
+        try {
+            const xmlPath = path.join(presentationPath, "assets", "sbplus.xml");
+
+            const xmlContent = fs.readFileSync(xmlPath, "utf-8");
+            const result = await parseStringPromise(xmlContent, {
+                trim: true,
+                explicitArray: false,
+                mergeAttrs: true,
+                preserveChildrenOrder: true,
+                explicitChildren: false,
+                charkey: "value",
+            }) as StorybookXml;;
+
+            return { success: true, data: result };
+        } catch (err: unknown) {
+            const error = err instanceof Error ? err : new Error(String(err));
+            return { success: false, error: error.message };
         }
     });
 }

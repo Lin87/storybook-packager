@@ -8,4 +8,5 @@ contextBridge.exposeInMainWorld("electronAPI", {
     minimize: () => ipcRenderer.send("window:minimize"),
     close: () => ipcRenderer.send("window:close"),
     openEditorWindow: (presentationPath) => ipcRenderer.invoke("open-editor-window", presentationPath),
+    loadPresentationData: (path) => ipcRenderer.invoke("load-presentation-data", path),
 });
