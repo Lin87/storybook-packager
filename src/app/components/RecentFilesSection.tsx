@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-export default function RecentFilesSection() {
+function RecentFilesSection() {
     const [recentFiles, setRecentFiles] = useState<string[]>([]);
 
     useEffect(() => {
@@ -36,3 +36,5 @@ export default function RecentFilesSection() {
         </div>
     );
 }
+
+export default RecentFilesSection;
