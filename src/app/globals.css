@@ -3,6 +3,11 @@
   themes: light --default, dark --prefersdark, night;
 }
 
+html, body, #__next {
+  height: 100%;
+  margin: 0;
+}
+
 body {
   padding: 1rem;
   font-family: var(--font-poppins-sans);
@@ -10,4 +15,12 @@ body {
 
 code, pre {
   font-family: var(--font-dm-mono);
+}
+
+.drag-region {
+  -webkit-app-region: drag;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
 }

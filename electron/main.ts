@@ -1,0 +1,107 @@
+import { app, BrowserWindow, ipcMain, dialog } from "electron";
+import path from "path";
+import fs from "fs";
+import { fileURLToPath } from "url";
+
+// Required to get __dirname in ES module context
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+let welcomeWindow: BrowserWindow | null = null;
+
+// Helper to create the presentation folder structure
+function createPresentationFolders(basePath: string, title: string) {
+    const assetsPath = path.join(basePath, "assets");
+    const subDirs = ["audio", "video", "images", "html", "pages"];
+
+    fs.mkdirSync(assetsPath, { recursive: true });
+    subDirs.forEach((dir) => fs.mkdirSync(path.join(assetsPath, dir), { recursive: true }));
+
+    const xmlContent = `<?xml version="1.0" encoding="UTF-8" ?>
+<storybook accent="#642667" pageImgFormat="jpg" splashImgFormat="jpg" mathjax="off">
+  <setup splashImg="splash">
+    <title>${title}</title>
+    <author name="Author Name"></author>
+  </setup>
+  <section title="">
+  </section>
+</storybook>`;
+
+    fs.writeFileSync(path.join(assetsPath, "sbplus.xml"), xmlContent, "utf-8");
+}
+
+// Register IPC handlers here
+function registerIpcHandlers() {
+    const recentFilePath = path.join(app.getPath("userData"), "recent.json");
+
+    ipcMain.on("window:minimize", () => {
+        BrowserWindow.getFocusedWindow()?.minimize();
+    });
+
+    ipcMain.on("window:close", () => {
+        BrowserWindow.getFocusedWindow()?.close();
+    });
+
+    ipcMain.handle("create-new-presentation", async () => {
+        const result = await dialog.showOpenDialog({
+            title: "Choose a location for the new presentation",
+            properties: ["openDirectory", "createDirectory"],
+        });
+
+        if (result.canceled || result.filePaths.length === 0) return null;
+
+        const targetDir = result.filePaths[0];
+        const title = path.basename(targetDir);
+
+        try {
+            createPresentationFolders(targetDir, title);
+            return targetDir;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } catch (err: any) {
+            return { error: err.message };
+        }
+    });
+
+    ipcMain.handle("get-recent", () => {
+        if (fs.existsSync(recentFilePath)) {
+            const contents = fs.readFileSync(recentFilePath, "utf-8");
+            return JSON.parse(contents);
+        }
+        return [];
+    });
+}
+
+function createWelcomeWindow() {
+    welcomeWindow = new BrowserWindow({
+        width: 800,
+        height: 450,
+        minWidth: 800,
+        minHeight: 450,
+        maxWidth: 800,
+        maxHeight: 450,
+        frame: false,
+        titleBarStyle: "hidden",
+        trafficLightPosition: { x: 12, y: 10 },
+        resizable: false,
+        icon: path.join(__dirname, "../public/icons/icon.png"),
+        webPreferences: {
+            preload: path.join(__dirname, "preload.cjs"), // Make sure this path is correct
+            contextIsolation: true,
+            nodeIntegration: false, // never use true unless absolutely necessary
+        },
+    });
+
+    const startURL = process.env.ELECTRON_START_URL || `file://${path.join(__dirname, "../out/index.html")}`;
+
+    welcomeWindow.setMenuBarVisibility(false);
+    welcomeWindow.loadURL(startURL);
+}
+
+app.whenReady().then(() => {
+    registerIpcHandlers(); // IPCs must be ready before window launches
+    createWelcomeWindow();
+});
+
+app.on("window-all-closed", () => {
+    if (process.platform !== "darwin") app.quit();
+});
