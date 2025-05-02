@@ -4,6 +4,7 @@ import fs from "fs";
 import { fileURLToPath } from "url";
 import { parseStringPromise } from "xml2js";
 import type { StorybookXml } from "../types/sbplus";
+import { loadWelcomeWindowState, saveWelcomeWindowState, loadEditorWindowState, saveEditorWindowState } from "./windowState";
 
 app.setName("storybook-packager");
 
@@ -89,9 +90,15 @@ function registerIpcHandlers() {
     });
 
     ipcMain.handle("open-editor-window", (_event, presentationPath: string) => {
+        const savedState = loadEditorWindowState();
+
         const editorWindow = new BrowserWindow({
-            width: 1024,
-            height: 768,
+            width: savedState.width,
+            height: savedState.height,
+            minWidth: 1024,
+            minHeight: 768,
+            x: savedState.x,
+            y: savedState.y,
             title: "Storybook Editor",
             icon: path.join(__dirname, "../public/icons/icon.png"),
             webPreferences: {
@@ -101,10 +108,20 @@ function registerIpcHandlers() {
             },
         });
 
+        if (savedState.fullscreen) {
+            editorWindow.setFullScreen(true);
+        } else if (savedState.maximized) {
+            editorWindow.maximize();
+        }
+
         // Load editor.html or a route if using Next.js
         const editorURL = process.env.ELECTRON_START_URL ? `${process.env.ELECTRON_START_URL}/editor?path=${encodeURIComponent(presentationPath)}` : `file://${path.join(__dirname, "../out/editor.html")}`; // fallback for export
 
         editorWindow.loadURL(editorURL);
+
+        editorWindow.on("close", () => {
+            saveEditorWindowState(editorWindow);
+        });
 
         // close the welcome window
         if (welcomeWindow && !welcomeWindow.isDestroyed()) {
@@ -136,13 +153,19 @@ function registerIpcHandlers() {
 }
 
 function createWelcomeWindow() {
+    const pos = loadWelcomeWindowState();
+    const width: number = 800;
+    const height: number = 450;
+
     welcomeWindow = new BrowserWindow({
-        width: 800,
-        height: 450,
-        minWidth: 800,
-        minHeight: 450,
-        maxWidth: 800,
-        maxHeight: 450,
+        width: width,
+        height: height,
+        minWidth: width,
+        minHeight: height,
+        maxWidth: width,
+        maxHeight: height,
+        x: pos.x,
+        y: pos.y,
         frame: false,
         titleBarStyle: "hidden",
         trafficLightPosition: { x: 12, y: 10 },
@@ -159,6 +182,10 @@ function createWelcomeWindow() {
 
     welcomeWindow.setMenuBarVisibility(false);
     welcomeWindow.loadURL(startURL);
+
+    welcomeWindow.on("close", () => {
+        saveWelcomeWindowState(welcomeWindow!);
+    });
 }
 
 app.whenReady().then(() => {
