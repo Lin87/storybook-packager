@@ -1,16 +1,19 @@
-// tsconfig.electron.json
 {
     "compilerOptions": {
-      "target": "ES2020",
-      "module": "ESNext",
-      "outDir": "./dist-electron",
-      "moduleResolution": "node",
-      "esModuleInterop": true,
-      "strict": true,
-      "skipLibCheck": true,
-      "resolveJsonModule": true,
-      "sourceMap": true
+        "target": "ES2020",
+        "module": "ESNext",
+        "outDir": "dist-electron",
+        "rootDir": "src",
+        "moduleResolution": "node",
+        "esModuleInterop": true,
+        "strict": true,
+        "resolveJsonModule": true,
+        "skipLibCheck": true,
+        "baseUrl": "src",
+        "paths": {
+            "@/*": ["*"]
+        }
     },
-    "include": ["electron/main.ts", "electron/preload.cjs"]
-  }
-  
+    "include": ["src/electron/main.ts"],
+    "exclude": ["src/types"]
+}

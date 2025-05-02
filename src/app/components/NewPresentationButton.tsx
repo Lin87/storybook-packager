@@ -22,6 +22,7 @@ function NewPresentationButton() {
             }
 
             if (typeof result === "string") {
+                window.dispatchEvent(new CustomEvent("recent-files-updated"));
                 window.electronAPI.openEditorWindow(result);
             }
         } finally {

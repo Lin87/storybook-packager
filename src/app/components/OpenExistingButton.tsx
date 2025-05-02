@@ -4,6 +4,7 @@ function OpenExistingButton() {
     const handleOpen = async () => {
         const result = await window.electronAPI.openFile();
         if (result) {
+            //window.dispatchEvent(new CustomEvent("recent-files-updated"));
             console.log("Opened existing presentation at:", result);
         }
     };

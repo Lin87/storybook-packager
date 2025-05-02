@@ -3,15 +3,15 @@
   "description": "Storybook Packager desktop application",
   "author": "Ethan Lin <elin@excelsior.edu>",
   "version": "0.1.0",
-  "main": "dist-electron/main.js",
+  "main": "dist-electron/electron/main.js",
   "private": true,
   "type": "module",
   "scripts": {
     "dev:next": "next dev",
-    "dev:electron": "wait-on http://localhost:3000 && npm run build:electron && cross-env ELECTRON_START_URL=http://localhost:3000 electron dist-electron/main.js",
-    "dev": "concurrently \"npm run dev:next\" \"npm run dev:electron\"",
+    "dev:electron": "wait-on http://localhost:3000 && npm run build:electron && cross-env ELECTRON_START_URL=http://localhost:3000 electron dist-electron/electron/main.js",
+    "dev": "concurrently -n NEXT,ELECTRON -c green,blue \"npm run dev:next\" \"npm run dev:electron\"",
     "start": "next start",
-    "build:electron": "tsc -p tsconfig.electron.json && copy electron\\preload.cjs dist-electron\\preload.cjs",
+    "build:electron": "tsc -p tsconfig.electron.json && copy src\\electron\\preload.cjs dist-electron\\electron\\preload.cjs",
     "build:next": "next build",
     "predist": "node -e \"require('fs').mkdirSync('node_modules/@img/sharp-darwin-arm64', { recursive: true });\"",
     "dist": "npm run build:next && electron-builder"
@@ -24,16 +24,16 @@
     },
     "files": [
       "out/**/*",
-      "dist-electron/main.js",
-      "electron/preload.cjs",
+      "dist-electron/electron/main.js",
+      "dist-electron/electron/preload.cjs",
       "package.json"
     ],
     "win": {
       "icon": "icon.ico",
       "files": [
         "out/**/*",
-        "dist-electron/main.js",
-        "electron/preload.cjs",
+        "dist-electron/electron/main.js",
+        "dist-electron/electron/preload.cjs",
         "package.json",
         "!**/node_modules/@img/sharp-darwin-arm64",
         "!node_modules/@img/sharp-darwin-arm64"

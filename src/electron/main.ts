@@ -3,11 +3,14 @@ import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
 import { parseStringPromise } from "xml2js";
-import { StorybookXml } from '../src/types/sbplus';
+import type { StorybookXml } from "../types/sbplus";
+
+app.setName("storybook-packager");
 
 // Required to get __dirname in ES module context
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const recentFilePath = path.join(app.getPath("userData"), "recent.json");
 
 let welcomeWindow: BrowserWindow | null = null;
 
@@ -34,7 +37,6 @@ function createPresentationFolders(basePath: string, title: string) {
 
 // Register IPC handlers here
 function registerIpcHandlers() {
-    const recentFilePath = path.join(app.getPath("userData"), "recent.json");
 
     ipcMain.on("window:minimize", () => {
         BrowserWindow.getFocusedWindow()?.minimize();
@@ -57,6 +59,7 @@ function registerIpcHandlers() {
 
         try {
             createPresentationFolders(targetDir, title);
+            saveRecent(targetDir);
             return targetDir;
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
@@ -102,14 +105,14 @@ function registerIpcHandlers() {
             const xmlPath = path.join(presentationPath, "assets", "sbplus.xml");
 
             const xmlContent = fs.readFileSync(xmlPath, "utf-8");
-            const result = await parseStringPromise(xmlContent, {
+            const result = (await parseStringPromise(xmlContent, {
                 trim: true,
                 explicitArray: false,
                 mergeAttrs: true,
                 preserveChildrenOrder: true,
                 explicitChildren: false,
                 charkey: "value",
-            }) as StorybookXml;;
+            })) as StorybookXml;
 
             return { success: true, data: result };
         } catch (err: unknown) {
@@ -153,3 +156,16 @@ app.whenReady().then(() => {
 app.on("window-all-closed", () => {
     if (process.platform !== "darwin") app.quit();
 });
+
+function loadRecent(): string[] {
+    if (fs.existsSync(recentFilePath)) {
+        return JSON.parse(fs.readFileSync(recentFilePath, "utf-8"));
+    }
+    return [];
+}
+
+function saveRecent(pathToAdd: string) {
+    const recent = loadRecent();
+    const updated = [pathToAdd, ...recent.filter((p) => p !== pathToAdd)];
+    fs.writeFileSync(recentFilePath, JSON.stringify(updated.slice(0, 10)));
+}
