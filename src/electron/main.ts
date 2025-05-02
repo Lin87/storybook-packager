@@ -60,9 +60,9 @@ function registerIpcHandlers() {
             createPresentationFolders(targetDir, title);
             saveRecent(targetDir);
             return targetDir;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } catch (err: any) {
-            return { error: err.message };
+        } catch (err: unknown) {
+            const error = err instanceof Error ? err : new Error(String(err));
+            return { success: false, error: error.message };
         }
     });
 
@@ -164,6 +164,12 @@ function createWelcomeWindow() {
 app.whenReady().then(() => {
     registerIpcHandlers(); // IPCs must be ready before window launches
     createWelcomeWindow();
+});
+
+app.on("activate", () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+        createWelcomeWindow();
+    }
 });
 
 app.on("window-all-closed", () => {
