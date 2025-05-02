@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ExclamationTriangleFill } from "react-bootstrap-icons";
+import { showToast } from "@/app/utils/toast";
 
 function RecentFilesSection() {
     const [recentFiles, setRecentFiles] = useState<string[]>([]);
@@ -23,10 +25,17 @@ function RecentFilesSection() {
         };
     }, []);
 
-    const handleOpenRecent = (path: string) => {
-        // Perform open logic here (e.g., load editor)
-        console.log("Opening recent presentation:", path);
-        // You could even emit IPC or route from here later
+    const handleOpenRecent = async (path: string) => {
+        // Check if sbplus.xml still exists before launching
+        const result = await window.electronAPI.loadPresentationData(path);
+
+        if (!result || result.success === false) {
+            showToast("Could not open this presentation. It may have been moved or deleted.", "error", <ExclamationTriangleFill />);
+            window.dispatchEvent(new CustomEvent("recent-files-updated")); // refresh the list
+            return;
+        }
+
+        window.electronAPI.openEditorWindow(path);
     };
 
     return (

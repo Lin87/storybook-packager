@@ -76,6 +76,25 @@ function registerIpcHandlers() {
         }
     });
 
+    ipcMain.handle("open-existing-presentation", async () => {
+        const result = await dialog.showOpenDialog({
+            title: "Open Existing Presentation",
+            properties: ["openDirectory"],
+        });
+
+        if (result.canceled || result.filePaths.length === 0) return null;
+
+        const selectedPath = result.filePaths[0];
+        const xmlPath = path.join(selectedPath, "assets", "sbplus.xml");
+
+        if (!fs.existsSync(xmlPath)) {
+            return { error: "This folder does not contain a valid Storybook+ presentation." };
+        }
+
+        saveRecent(selectedPath);
+        return selectedPath;
+    });
+
     ipcMain.handle("get-recent", () => {
         if (fs.existsSync(recentFilePath)) {
             const contents = fs.readFileSync(recentFilePath, "utf-8");
@@ -102,12 +121,14 @@ function registerIpcHandlers() {
         const savedState = loadEditorWindowState();
 
         const editorWindow = new BrowserWindow({
+            show: false, // don't show immediately
             width: savedState.width,
             height: savedState.height,
             minWidth: 1024,
             minHeight: 768,
             x: savedState.x,
             y: savedState.y,
+            backgroundColor: "#1D232A",
             title: "Storybook Editor",
             icon: resolveAsset("icons/icon.png"),
             webPreferences: {
@@ -131,6 +152,10 @@ function registerIpcHandlers() {
         const editorURL = isDev ? `${process.env.ELECTRON_START_URL}/editor?path=${encodeURI(presentationPath)}` : `http://localhost:${staticPort}/editor?path=${encodeURI(presentationPath)}`;
 
         editorWindow.loadURL(editorURL);
+
+        editorWindow.once("ready-to-show", () => {
+            editorWindow.show(); // only show when fully ready
+        });
 
         editorWindow.on("close", () => {
             saveEditorWindowState(editorWindow);
@@ -176,6 +201,9 @@ function createWelcomeWindow() {
         x: pos.x,
         y: pos.y,
         frame: false,
+        backgroundMaterial: "mica",
+        visualEffectState: "active",
+        vibrancy: "under-window",
         titleBarStyle: "hidden",
         trafficLightPosition: { x: 12, y: 10 },
         resizable: false,

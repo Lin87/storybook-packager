@@ -4,7 +4,7 @@ const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("electronAPI", {
     createNewPresentation: () => ipcRenderer.invoke("create-new-presentation"),
-    openPresentation: () => ipcRenderer.invoke("open-presentation"),
+    openExistingPresentation: () => ipcRenderer.invoke("open-existing-presentation"),
     getRecent: () => ipcRenderer.invoke("get-recent"),
     openFile: () => ipcRenderer.invoke("open-file"),
     minimize: () => ipcRenderer.send("window:minimize"),

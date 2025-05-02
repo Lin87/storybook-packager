@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { ExclamationTriangleFill } from "react-bootstrap-icons";
+import { showToast } from "@/app/utils/toast";
 
 function NewPresentationButton() {
     const [loading, setLoading] = useState(false);
@@ -17,7 +19,7 @@ function NewPresentationButton() {
             }
 
             if (isErrorResult(result)) {
-                alert(`Failed to create presentation: ${result?.error ?? "Unknown error"}`);
+                showToast(`Failed to create presentation. ${result?.error ?? "Unknown error."}`, "error", <ExclamationTriangleFill />);
                 return;
             }
 
