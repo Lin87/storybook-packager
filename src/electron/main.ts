@@ -37,7 +37,6 @@ function createPresentationFolders(basePath: string, title: string) {
 
 // Register IPC handlers here
 function registerIpcHandlers() {
-
     ipcMain.on("window:minimize", () => {
         BrowserWindow.getFocusedWindow()?.minimize();
     });
@@ -70,8 +69,22 @@ function registerIpcHandlers() {
     ipcMain.handle("get-recent", () => {
         if (fs.existsSync(recentFilePath)) {
             const contents = fs.readFileSync(recentFilePath, "utf-8");
-            return JSON.parse(contents);
+            const recentPaths: string[] = JSON.parse(contents);
+            const validPaths = recentPaths.filter((p) => {
+                try {
+                    return fs.existsSync(p) && fs.statSync(p).isDirectory();
+                } catch {
+                    return false;
+                }
+            });
+
+            if (validPaths.length !== recentPaths.length) {
+                fs.writeFileSync(recentFilePath, JSON.stringify(validPaths));
+            }
+
+            return validPaths;
         }
+
         return [];
     });
 
