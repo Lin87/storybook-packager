@@ -1,39 +1,48 @@
 import { app, BrowserWindow, ipcMain, dialog } from "electron";
+
+app.setName("storybook-packager");
+
+import express from "express";
+import http from "http";
+import getPort from "get-port";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
 import { parseStringPromise } from "xml2js";
 import type { StorybookXml } from "../types/sbplus";
-import { loadWelcomeWindowState, saveWelcomeWindowState, loadEditorWindowState, saveEditorWindowState } from "./windowState";
-
-app.setName("storybook-packager");
+import { loadWelcomeWindowState, saveWelcomeWindowState, loadEditorWindowState, saveEditorWindowState } from "./windowState.js";
 
 // Required to get __dirname in ES module context
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const recentFilePath = path.join(app.getPath("userData"), "recent.json");
+
+const isDev = !app.isPackaged && process.env.ELECTRON_START_URL;
+console.log(`Running in ${isDev ? "development" : "production"} mode.`);
+
+const recentFilePath: string = path.join(app.getPath("userData"), "recent.json");
 
 let welcomeWindow: BrowserWindow | null = null;
+let staticServer: http.Server | null = null;
+let staticPort: number;
 
-// Helper to create the presentation folder structure
-function createPresentationFolders(basePath: string, title: string) {
-    const assetsPath = path.join(basePath, "assets");
-    const subDirs = ["audio", "video", "images", "html", "pages"];
+async function startStaticServer(): Promise<number> {
+    const staticPath = path.join(process.cwd(), "out");
 
-    fs.mkdirSync(assetsPath, { recursive: true });
-    subDirs.forEach((dir) => fs.mkdirSync(path.join(assetsPath, dir), { recursive: true }));
+    if (!fs.existsSync(staticPath)) {
+        console.error("❌ The 'out' directory does not exist. Run `npm run build:prod` first.");
+        app.quit(); // refers to Electron's app
+        return 0;
+    }
 
-    const xmlContent = `<?xml version="1.0" encoding="UTF-8" ?>
-<storybook accent="#642667" pageImgFormat="jpg" splashImgFormat="jpg" mathjax="off">
-  <setup splashImg="splash">
-    <title>${title}</title>
-    <author name="Author Name"></author>
-  </setup>
-  <section title="">
-  </section>
-</storybook>`;
+    staticPort = await getPort({ port: makeRange(3005, 3999) });
 
-    fs.writeFileSync(path.join(assetsPath, "sbplus.xml"), xmlContent, "utf-8");
+    staticServer = express()
+        .use(express.static(staticPath))
+        .listen(staticPort, "127.0.0.1", () => {
+            console.log(`Static export served at http://127.0.0.1:${staticPort}`);
+        });
+
+    return staticPort;
 }
 
 // Register IPC handlers here
@@ -100,7 +109,7 @@ function registerIpcHandlers() {
             x: savedState.x,
             y: savedState.y,
             title: "Storybook Editor",
-            icon: path.join(__dirname, "../public/icons/icon.png"),
+            icon: resolveAsset("icons/icon.png"),
             webPreferences: {
                 preload: path.join(__dirname, "preload.cjs"),
                 contextIsolation: true,
@@ -114,8 +123,12 @@ function registerIpcHandlers() {
             editorWindow.maximize();
         }
 
-        // Load editor.html or a route if using Next.js
-        const editorURL = process.env.ELECTRON_START_URL ? `${process.env.ELECTRON_START_URL}/editor?path=${encodeURIComponent(presentationPath)}` : `file://${path.join(__dirname, "../out/editor.html")}`; // fallback for export
+        if (!isDev && !staticPort) {
+            console.error("Editor URL could not be resolved: staticPort is undefined.");
+            return;
+        }
+
+        const editorURL = isDev ? `${process.env.ELECTRON_START_URL}/editor?path=${encodeURI(presentationPath)}` : `http://localhost:${staticPort}/editor?path=${encodeURI(presentationPath)}`;
 
         editorWindow.loadURL(editorURL);
 
@@ -160,17 +173,13 @@ function createWelcomeWindow() {
     welcomeWindow = new BrowserWindow({
         width: width,
         height: height,
-        minWidth: width,
-        minHeight: height,
-        maxWidth: width,
-        maxHeight: height,
         x: pos.x,
         y: pos.y,
         frame: false,
         titleBarStyle: "hidden",
         trafficLightPosition: { x: 12, y: 10 },
         resizable: false,
-        icon: path.join(__dirname, "../public/icons/icon.png"),
+        icon: resolveAsset("icons/icon.png"),
         webPreferences: {
             preload: path.join(__dirname, "preload.cjs"), // Make sure this path is correct
             contextIsolation: true,
@@ -178,7 +187,7 @@ function createWelcomeWindow() {
         },
     });
 
-    const startURL = process.env.ELECTRON_START_URL || `file://${path.join(__dirname, "../out/index.html")}`;
+    const startURL = isDev ? process.env.ELECTRON_START_URL! : `http://localhost:${staticPort}/`;
 
     welcomeWindow.setMenuBarVisibility(false);
     welcomeWindow.loadURL(startURL);
@@ -188,8 +197,11 @@ function createWelcomeWindow() {
     });
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
     registerIpcHandlers(); // IPCs must be ready before window launches
+    if (!isDev) {
+        staticPort = await startStaticServer(); // Only start Express server in prod mode
+    }
     createWelcomeWindow();
 });
 
@@ -203,6 +215,45 @@ app.on("window-all-closed", () => {
     if (process.platform !== "darwin") app.quit();
 });
 
+app.on("before-quit", () => {
+    if (staticServer) {
+        staticServer.close(() => {
+            console.log("🧹 Static server shut down.");
+        });
+    }
+});
+
+/**** HELPERS ****/
+
+function makeRange(min: number, max: number): number[] {
+    return Array.from({ length: max - min + 1 }, (_, i) => min + i);
+}
+
+// Helper to create the presentation folder structure
+function createPresentationFolders(basePath: string, title: string) {
+    const assetsPath = path.join(basePath, "assets");
+    const subDirs = ["audio", "video", "images", "html", "pages"];
+
+    fs.mkdirSync(assetsPath, { recursive: true });
+    subDirs.forEach((dir) => fs.mkdirSync(path.join(assetsPath, dir), { recursive: true }));
+
+    const xmlContent = `<?xml version="1.0" encoding="UTF-8" ?>
+<storybook accent="#642667" pageImgFormat="jpg" splashImgFormat="jpg" mathjax="off">
+  <setup splashImg="splash">
+    <title>${title}</title>
+    <author name="Author Name"></author>
+  </setup>
+  <section title="">
+  </section>
+</storybook>`;
+
+    fs.writeFileSync(path.join(assetsPath, "sbplus.xml"), xmlContent, "utf-8");
+}
+
+function resolveAsset(file: string) {
+    return app.isPackaged ? path.join(process.resourcesPath, "assets", file) : path.join(__dirname, "../../public", file);
+}
+
 function loadRecent(): string[] {
     if (fs.existsSync(recentFilePath)) {
         return JSON.parse(fs.readFileSync(recentFilePath, "utf-8"));
@@ -213,5 +264,5 @@ function loadRecent(): string[] {
 function saveRecent(pathToAdd: string) {
     const recent = loadRecent();
     const updated = [pathToAdd, ...recent.filter((p) => p !== pathToAdd)];
-    fs.writeFileSync(recentFilePath, JSON.stringify(updated.slice(0, 10)));
+    fs.writeFileSync(recentFilePath, JSON.stringify(updated.slice(0, 10)), "utf-8");
 }

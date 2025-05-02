@@ -1,85 +1,87 @@
 {
-  "name": "storybook-packager",
-  "description": "Storybook Packager desktop application",
-  "author": "Ethan Lin <elin@excelsior.edu>",
-  "version": "0.1.0",
-  "main": "dist-electron/electron/main.js",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "dev:next": "next dev",
-    "dev:electron": "wait-on http://localhost:3000 && npm run build:electron && cross-env ELECTRON_START_URL=http://localhost:3000 electron dist-electron/electron/main.js",
-    "dev": "concurrently -n NEXT,ELECTRON -c green,blue \"npm run dev:next\" \"npm run dev:electron\"",
-    "start": "next start",
-    "build:electron": "tsc -p tsconfig.electron.json && copy src\\electron\\preload.cjs dist-electron\\electron\\preload.cjs",
-    "build:next": "next build",
-    "predist": "node -e \"require('fs').mkdirSync('node_modules/@img/sharp-darwin-arm64', { recursive: true });\"",
-    "dist": "npm run build:next && electron-builder"
-  },
-  "build": {
-    "appId": "edu.excelsior.storybook-packager",
-    "directories": {
-      "buildResources": "public/icons",
-      "output": "dist"
+    "name": "storybook-packager",
+    "description": "Storybook Packager desktop application",
+    "author": "Ethan Lin <elin@excelsior.edu>",
+    "version": "0.1.0",
+    "main": "dist-electron/electron/main.js",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "dev:next": "next dev",
+        "start:electron:dev": "wait-on http://localhost:3000 && node env-scripts/start-electron-dev.cjs",
+        "start:electron:prod": "node env-scripts/build-and-start-electron-prod.cjs",
+        "dev": "concurrently -n NEXT,ELECTRON -c green,blue \"npm run dev:next\" \"npm run start:electron:dev\"",
+        "build:prod": "npm run build:next && npm run export:next && npm run build:electron && npm run predist && electron-builder",
+        "build:next": "next build",
+        "export:next": "next export -o out",
+        "build:electron": "tsc -p tsconfig.electron.json",
+        "predist": "node -e \"require('fs').mkdirSync('node_modules/@img/sharp-darwin-arm64', { recursive: true });\""
     },
-    "files": [
-      "out/**/*",
-      "dist-electron/electron/main.js",
-      "dist-electron/electron/preload.cjs",
-      "package.json"
-    ],
-    "win": {
-      "icon": "icon.ico",
-      "files": [
-        "out/**/*",
-        "dist-electron/electron/main.js",
-        "dist-electron/electron/preload.cjs",
-        "package.json",
-        "!**/node_modules/@img/sharp-darwin-arm64",
-        "!node_modules/@img/sharp-darwin-arm64"
-      ],
-      "target": [
-        "nsis"
-      ]
+    "build": {
+        "appId": "edu.excelsior.storybook-packager",
+        "directories": {
+            "buildResources": "public/icons",
+            "output": "dist"
+        },
+        "files": [
+            "out/**/*",
+            "dist-electron/**/*",
+            "package.json"
+        ],
+        "win": {
+            "icon": "icon.ico",
+            "files": [
+                "out/**/*",
+                "dist-electron/**/*",
+                "package.json",
+                "!**/node_modules/@img/sharp-darwin-arm64",
+                "!node_modules/@img/sharp-darwin-arm64"
+            ],
+            "target": [
+                "nsis"
+            ]
+        },
+        "mac": {
+            "icon": "icon.icns",
+            "target": [
+                "dmg"
+            ]
+        },
+        "linux": {
+            "icon": "icon.png",
+            "target": [
+                "AppImage"
+            ]
+        }
     },
-    "mac": {
-      "icon": "icon.icns",
-      "target": [
-        "dmg"
-      ]
+    "dependencies": {
+        "electron-default-menu": "^1.0.2",
+        "express": "^5.1.0",
+        "get-port": "^7.1.0",
+        "next": "15.3.1",
+        "react": "^19.0.0",
+        "react-bootstrap-icons": "^1.11.5",
+        "react-dom": "^19.0.0",
+        "sharp": "^0.34.1",
+        "xml2js": "^0.6.2"
     },
-    "linux": {
-      "icon": "icon.png",
-      "target": [
-        "AppImage"
-      ]
+    "devDependencies": {
+        "@eslint/eslintrc": "^3",
+        "@tailwindcss/postcss": "^4",
+        "@types/express": "^5.0.1",
+        "@types/node": "^20",
+        "@types/react": "^19",
+        "@types/react-dom": "^19",
+        "@types/xml2js": "^0.4.14",
+        "concurrently": "^9.1.2",
+        "cross-env": "^7.0.3",
+        "daisyui": "^5.0.32",
+        "electron": "^36.0.0",
+        "electron-builder": "^26.0.12",
+        "eslint": "^9",
+        "eslint-config-next": "15.3.1",
+        "tailwindcss": "^4",
+        "typescript": "^5",
+        "wait-on": "^8.0.3"
     }
-  },
-  "dependencies": {
-    "electron-default-menu": "^1.0.2",
-    "next": "15.3.1",
-    "react": "^19.0.0",
-    "react-bootstrap-icons": "^1.11.5",
-    "react-dom": "^19.0.0",
-    "sharp": "^0.34.1",
-    "xml2js": "^0.6.2"
-  },
-  "devDependencies": {
-    "@eslint/eslintrc": "^3",
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "@types/xml2js": "^0.4.14",
-    "concurrently": "^9.1.2",
-    "cross-env": "^7.0.3",
-    "daisyui": "^5.0.32",
-    "electron": "^36.0.0",
-    "electron-builder": "^26.0.12",
-    "eslint": "^9",
-    "eslint-config-next": "15.3.1",
-    "tailwindcss": "^4",
-    "typescript": "^5",
-    "wait-on": "^8.0.3"
-  }
 }

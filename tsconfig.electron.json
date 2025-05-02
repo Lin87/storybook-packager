@@ -14,6 +14,6 @@
             "@/*": ["*"]
         }
     },
-    "include": ["src/electron/main.ts"],
+    "include": ["src/electron/**/*.ts"],
     "exclude": ["src/types"]
 }
