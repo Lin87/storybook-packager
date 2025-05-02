@@ -10,7 +10,7 @@ export default function WelcomeScreen() {
             <AppTitleBar />
             <div className="flex justify-center h-full bg-base-200 rounded-md p-8 overflow-hidden">
                 <div className="flex flex-col items-center justify-center flex-1 space-y-6 pr-8 select-none">
-                    <img src="/icons/icon.png" alt="Storybook Packager" className="w-40 mb-1" />
+                    <img src="/icons/icon.png" alt="Storybook Packager" className="w-40 mb-4" />
                     <h1 className="text-3xl font-bold mb-6">Storybook Packager</h1>
                     <div className="space-x-4 mb-6">
                         <NewPresentationButton />
