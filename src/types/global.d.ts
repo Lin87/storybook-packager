@@ -1,6 +1,6 @@
 export {};
 
-import type { StorybookXml } from "./types/sbplus";
+import type { StorybookXml } from "./sbplus";
 
 declare global {
     interface Window {
