@@ -2,18 +2,19 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import type { StorybookXml } from '@/types/sbplus';
+import { useEditor } from '@/editor/state/EditorContext';
 
-function EditorScreen() {
+export default function EditorScreen() {
     const searchParams = useSearchParams();
+    const { state, dispatch } = useEditor();
+
     const pathParam = searchParams.get('path');
-    const [data, setData] = useState<StorybookXml | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         if (!pathParam) return;
 
-        const fsPath = decodeURIComponent(pathParam); // undo encodeURI from main.ts
+        const fsPath = decodeURIComponent(pathParam);
         let cancelled = false;
 
         (async () => {
@@ -23,46 +24,55 @@ function EditorScreen() {
                 if (cancelled) return;
 
                 if (result.success) {
-                    setData(result.data);
+                    dispatch({
+                        type: 'loadXml',
+                        payload: {
+                            presentationPath: fsPath,
+                            xml: result.data,
+                        },
+                    });
+
                     setError(null);
                 } else {
-                    setError(result.error || 'Failed to load presentation data.');
+                    setError(result.error ?? 'Failed to load XML');
                 }
             } catch (err) {
                 if (cancelled) return;
-                const message = err instanceof Error ? err.message : String(err);
-                setError(message);
+                const msg = err instanceof Error ? err.message : String(err);
+                setError(msg);
             }
         })();
 
         return () => {
             cancelled = true;
         };
-    }, [pathParam]);
+    }, [pathParam, dispatch]);
+
+    console.log("GLOBAL STATE:", state);
+    
+    // -----------------------------
+    // Temporary debug UI
+    // This will be replaced in Step 3
+    // -----------------------------
 
     if (!pathParam) {
-        return <p className='text-red-400 text-sm'>No presentation path provided in the URL.</p>;
+        return <p className='text-red-400'>No project path provided.</p>;
     }
 
     if (error) {
-        return <p className='text-red-400 text-sm'>Error loading presentation: {error}</p>;
+        return <p className='text-red-400'>Error loading presentation: {error}</p>;
     }
 
-    if (!data) {
-        return <p className='text-gray-500'>Loading...</p>;
+    if (!state.xml) {
+        return <p className='text-gray-500'>Loading presentation...</p>;
     }
-
-    const sections = Array.isArray(data.storybook.section) ? data.storybook.section : [data.storybook.section];
 
     return (
-        <div className='p-6 space-y-2'>
-            <h1 className='text-2xl font-bold'>{data.storybook.setup.title ?? '(Untitled presentation)'}</h1>
-            {data.storybook.setup.author && <p className='text-sm text-gray-500'>Author: {data.storybook.setup.author.name}</p>}
-            {data.storybook.setup.subtitle && <p className='text-sm text-gray-400'>Subtitle: {data.storybook.setup.subtitle}</p>}
-            {data.storybook.setup.length && <p className='text-xs text-gray-500'>Approx. length: {data.storybook.setup.length}</p>}
-            <p className='text-sm mt-4'>Sections: {sections.length}</p>
+        <div className='p-4 space-y-2'>
+            <h1 className='text-xl font-bold'>{state.xml.storybook.setup.title || '(Untitled Presentation)'}</h1>
+            {state.xml.storybook.setup.author?.name && <p className='text-sm text-gray-600'>Author: {state.xml.storybook.setup.author.name}</p>}
+            <p className='text-xs text-gray-400 mt-3'>Loaded from: {state.presentationPath}</p>
+            <p className='text-xs text-gray-400'>Sections: {Array.isArray(state.xml.storybook.section) ? state.xml.storybook.section.length : 1}</p>
         </div>
     );
 }
-
-export default EditorScreen;
