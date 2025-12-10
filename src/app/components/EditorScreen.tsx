@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useEditor } from '@/editor/state/EditorContext';
+import Sidebar from '@/editor/ui/Sidebar';
 
 export default function EditorScreen() {
     const searchParams = useSearchParams();
@@ -48,31 +49,25 @@ export default function EditorScreen() {
         };
     }, [pathParam, dispatch]);
 
-    console.log("GLOBAL STATE:", state);
-    
-    // -----------------------------
-    // Temporary debug UI
-    // This will be replaced in Step 3
-    // -----------------------------
-
-    if (!pathParam) {
-        return <p className='text-red-400'>No project path provided.</p>;
-    }
-
-    if (error) {
-        return <p className='text-red-400'>Error loading presentation: {error}</p>;
-    }
-
     if (!state.xml) {
-        return <p className='text-gray-500'>Loading presentation...</p>;
+        return <p className='p-4'>Loading...</p>;
     }
 
     return (
-        <div className='p-4 space-y-2'>
-            <h1 className='text-xl font-bold'>{state.xml.storybook.setup.title || '(Untitled Presentation)'}</h1>
-            {state.xml.storybook.setup.author?.name && <p className='text-sm text-gray-600'>Author: {state.xml.storybook.setup.author.name}</p>}
-            <p className='text-xs text-gray-400 mt-3'>Loaded from: {state.presentationPath}</p>
-            <p className='text-xs text-gray-400'>Sections: {Array.isArray(state.xml.storybook.section) ? state.xml.storybook.section.length : 1}</p>
+        <div className='flex h-full w-full'>
+            <Sidebar />
+
+            <div className='flex-1 p-6'>
+                {/* TEMP placeholder until Step 4 */}
+                <h1 className='text-xl font-bold'>{state.xml.storybook.setup.title}</h1>
+
+                <p className='text-sm text-gray-500'>
+                    Selected:
+                    {state.selectedSectionIndex === null && state.selectedPageIndex === null && ' Setup'}
+                    {state.selectedSectionIndex !== null && state.selectedPageIndex === null && ` Section ${state.selectedSectionIndex + 1}`}
+                    {state.selectedSectionIndex !== null && state.selectedPageIndex !== null && ` Section ${state.selectedSectionIndex + 1} → Page ${state.selectedPageIndex + 1}`}
+                </p>
+            </div>
         </div>
     );
 }

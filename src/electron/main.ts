@@ -1,32 +1,32 @@
-import { app, BrowserWindow, ipcMain, dialog } from "electron";
+import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 
-app.setName("storybook-packager");
+app.setName('storybook-packager');
 
-import express from "express";
-import http from "http";
-import getPort from "get-port";
-import path from "path";
-import fs from "fs";
-import { fileURLToPath } from "url";
-import { parseStringPromise } from "xml2js";
-import type { StorybookXml } from "../types/sbplus";
-import { loadWelcomeWindowState, saveWelcomeWindowState, loadEditorWindowState, saveEditorWindowState } from "./windowState.js";
+import express from 'express';
+import http from 'http';
+import getPort from 'get-port';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+import { parseStringPromise } from 'xml2js';
+import type { StorybookXml } from '../types/sbplus';
+import { loadWelcomeWindowState, saveWelcomeWindowState, loadEditorWindowState, saveEditorWindowState } from './windowState.js';
 
 // Required to get __dirname in ES module context
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const isDev = !app.isPackaged && process.env.ELECTRON_START_URL;
-console.log(`Running in ${isDev ? "development" : "production"} mode.`);
+console.log(`Running in ${isDev ? 'development' : 'production'} mode.`);
 
-const recentFilePath: string = path.join(app.getPath("userData"), "recent.json");
+const recentFilePath: string = path.join(app.getPath('userData'), 'recent.json');
 
 let welcomeWindow: BrowserWindow | null = null;
 let staticServer: http.Server | null = null;
 let staticPort: number;
 
 async function startStaticServer(): Promise<number> {
-    const staticPath = path.join(process.cwd(), "out");
+    const staticPath = path.join(process.cwd(), 'out');
 
     if (!fs.existsSync(staticPath)) {
         console.error("❌ The 'out' directory does not exist. Run `npm run build:prod` first.");
@@ -38,7 +38,7 @@ async function startStaticServer(): Promise<number> {
 
     staticServer = express()
         .use(express.static(staticPath))
-        .listen(staticPort, "127.0.0.1", () => {
+        .listen(staticPort, '127.0.0.1', () => {
             console.log(`Static export served at http://127.0.0.1:${staticPort}`);
         });
 
@@ -47,18 +47,18 @@ async function startStaticServer(): Promise<number> {
 
 // Register IPC handlers here
 function registerIpcHandlers() {
-    ipcMain.on("window:minimize", () => {
+    ipcMain.on('window:minimize', () => {
         BrowserWindow.getFocusedWindow()?.minimize();
     });
 
-    ipcMain.on("window:close", () => {
+    ipcMain.on('window:close', () => {
         BrowserWindow.getFocusedWindow()?.close();
     });
 
-    ipcMain.handle("create-new-presentation", async () => {
+    ipcMain.handle('create-new-presentation', async () => {
         const result = await dialog.showOpenDialog({
-            title: "Choose a location for the new presentation",
-            properties: ["openDirectory", "createDirectory"],
+            title: 'Choose a location for the new presentation',
+            properties: ['openDirectory', 'createDirectory'],
         });
 
         if (result.canceled || result.filePaths.length === 0) return null;
@@ -76,28 +76,28 @@ function registerIpcHandlers() {
         }
     });
 
-    ipcMain.handle("open-existing-presentation", async () => {
+    ipcMain.handle('open-existing-presentation', async () => {
         const result = await dialog.showOpenDialog({
-            title: "Open Existing Presentation",
-            properties: ["openDirectory"],
+            title: 'Open Existing Presentation',
+            properties: ['openDirectory'],
         });
 
         if (result.canceled || result.filePaths.length === 0) return null;
 
         const selectedPath = result.filePaths[0];
-        const xmlPath = path.join(selectedPath, "assets", "sbplus.xml");
+        const xmlPath = path.join(selectedPath, 'assets', 'sbplus.xml');
 
         if (!fs.existsSync(xmlPath)) {
-            return { error: "This folder does not contain a valid Storybook+ presentation." };
+            return { error: 'This folder does not contain a valid Storybook+ presentation.' };
         }
 
         saveRecent(selectedPath);
         return selectedPath;
     });
 
-    ipcMain.handle("get-recent", () => {
+    ipcMain.handle('get-recent', () => {
         if (fs.existsSync(recentFilePath)) {
-            const contents = fs.readFileSync(recentFilePath, "utf-8");
+            const contents = fs.readFileSync(recentFilePath, 'utf-8');
             const recentPaths: string[] = JSON.parse(contents);
             const validPaths = recentPaths.filter((p) => {
                 try {
@@ -117,7 +117,7 @@ function registerIpcHandlers() {
         return [];
     });
 
-    ipcMain.handle("open-editor-window", (_event, presentationPath: string) => {
+    ipcMain.handle('open-editor-window', (_event, presentationPath: string) => {
         const savedState = loadEditorWindowState();
 
         const editorWindow = new BrowserWindow({
@@ -128,11 +128,11 @@ function registerIpcHandlers() {
             minHeight: 768,
             x: savedState.x,
             y: savedState.y,
-            backgroundColor: "#1D232A",
-            title: "Storybook Editor",
-            icon: resolveAsset("icons/icon.png"),
+            backgroundColor: '#1D232A',
+            title: 'Storybook Editor',
+            icon: resolveAsset('icons/icon.png'),
             webPreferences: {
-                preload: path.join(__dirname, "preload.cjs"),
+                preload: path.join(__dirname, 'preload.cjs'),
                 contextIsolation: true,
                 nodeIntegration: false,
             },
@@ -145,7 +145,7 @@ function registerIpcHandlers() {
         }
 
         if (!isDev && !staticPort) {
-            console.error("Editor URL could not be resolved: staticPort is undefined.");
+            console.error('Editor URL could not be resolved: staticPort is undefined.');
             return;
         }
 
@@ -153,11 +153,11 @@ function registerIpcHandlers() {
 
         editorWindow.loadURL(editorURL);
 
-        editorWindow.once("ready-to-show", () => {
+        editorWindow.once('ready-to-show', () => {
             editorWindow.show(); // only show when fully ready
         });
 
-        editorWindow.on("close", () => {
+        editorWindow.on('close', () => {
             saveEditorWindowState(editorWindow);
         });
 
@@ -168,18 +168,21 @@ function registerIpcHandlers() {
         }
     });
 
-    ipcMain.handle("load-presentation-data", async (_event, presentationPath: string) => {
+    ipcMain.handle('load-presentation-data', async (_event, presentationPath: string) => {
         try {
-            const xmlPath = path.join(presentationPath, "assets", "sbplus.xml");
+            const xmlPath = path.join(presentationPath, 'assets', 'sbplus.xml');
 
-            const xmlContent = fs.readFileSync(xmlPath, "utf-8");
+            const xmlContent = fs.readFileSync(xmlPath, 'utf-8');
             const result = (await parseStringPromise(xmlContent, {
-                trim: true,
-                explicitArray: false,
-                mergeAttrs: true,
-                preserveChildrenOrder: true,
-                explicitChildren: false,
-                charkey: "value",
+                explicitArray: false, // <- prevent arrays unless needed
+                trim: true, // remove extra whitespace
+                explicitCharkey: false, // do not use '_' wrapper unless needed
+                mergeAttrs: false, // keep attributes inside '$'
+                preserveChildrenOrder: true, // needed for consistent reconstruction
+                explicitRoot: true, // keep <storybook> root
+                charsAsChildren: false, // cleaner structure
+                explicitChildren: false, // do not create a 'children' object
+                includeWhiteChars: false, // remove unnecessary whitespace
             })) as StorybookXml;
 
             return { success: true, data: result };
@@ -201,15 +204,15 @@ function createWelcomeWindow() {
         x: pos.x,
         y: pos.y,
         frame: false,
-        backgroundMaterial: "mica",
-        visualEffectState: "active",
-        vibrancy: "under-window",
-        titleBarStyle: "hidden",
+        backgroundMaterial: 'mica',
+        visualEffectState: 'active',
+        vibrancy: 'under-window',
+        titleBarStyle: 'hidden',
         trafficLightPosition: { x: 12, y: 10 },
         resizable: false,
-        icon: resolveAsset("icons/icon.png"),
+        icon: resolveAsset('icons/icon.png'),
         webPreferences: {
-            preload: path.join(__dirname, "preload.cjs"), // Make sure this path is correct
+            preload: path.join(__dirname, 'preload.cjs'), // Make sure this path is correct
             contextIsolation: true,
             nodeIntegration: false, // never use true unless absolutely necessary
         },
@@ -220,7 +223,7 @@ function createWelcomeWindow() {
     welcomeWindow.setMenuBarVisibility(false);
     welcomeWindow.loadURL(startURL);
 
-    welcomeWindow.on("close", () => {
+    welcomeWindow.on('close', () => {
         saveWelcomeWindowState(welcomeWindow!);
     });
 }
@@ -233,20 +236,20 @@ app.whenReady().then(async () => {
     createWelcomeWindow();
 });
 
-app.on("activate", () => {
+app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
         createWelcomeWindow();
     }
 });
 
-app.on("window-all-closed", () => {
-    if (process.platform !== "darwin") app.quit();
+app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') app.quit();
 });
 
-app.on("before-quit", () => {
+app.on('before-quit', () => {
     if (staticServer) {
         staticServer.close(() => {
-            console.log("🧹 Static server shut down.");
+            console.log('🧹 Static server shut down.');
         });
     }
 });
@@ -259,8 +262,8 @@ function makeRange(min: number, max: number): number[] {
 
 // Helper to create the presentation folder structure
 function createPresentationFolders(basePath: string, title: string) {
-    const assetsPath = path.join(basePath, "assets");
-    const subDirs = ["audio", "video", "images", "html", "pages"];
+    const assetsPath = path.join(basePath, 'assets');
+    const subDirs = ['audio', 'video', 'images', 'html', 'pages'];
 
     fs.mkdirSync(assetsPath, { recursive: true });
     subDirs.forEach((dir) => fs.mkdirSync(path.join(assetsPath, dir), { recursive: true }));
@@ -275,16 +278,16 @@ function createPresentationFolders(basePath: string, title: string) {
   </section>
 </storybook>`;
 
-    fs.writeFileSync(path.join(assetsPath, "sbplus.xml"), xmlContent, "utf-8");
+    fs.writeFileSync(path.join(assetsPath, 'sbplus.xml'), xmlContent, 'utf-8');
 }
 
 function resolveAsset(file: string) {
-    return app.isPackaged ? path.join(process.resourcesPath, "assets", file) : path.join(__dirname, "../../public", file);
+    return app.isPackaged ? path.join(process.resourcesPath, 'assets', file) : path.join(__dirname, '../../public', file);
 }
 
 function loadRecent(): string[] {
     if (fs.existsSync(recentFilePath)) {
-        return JSON.parse(fs.readFileSync(recentFilePath, "utf-8"));
+        return JSON.parse(fs.readFileSync(recentFilePath, 'utf-8'));
     }
     return [];
 }
@@ -292,5 +295,5 @@ function loadRecent(): string[] {
 function saveRecent(pathToAdd: string) {
     const recent = loadRecent();
     const updated = [pathToAdd, ...recent.filter((p) => p !== pathToAdd)];
-    fs.writeFileSync(recentFilePath, JSON.stringify(updated.slice(0, 10)), "utf-8");
+    fs.writeFileSync(recentFilePath, JSON.stringify(updated.slice(0, 10)), 'utf-8');
 }
