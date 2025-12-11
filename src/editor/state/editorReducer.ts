@@ -35,6 +35,69 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
                 selectedPageIndex: action.payload.pageIndex,
             };
 
+        case 'updateStorybookAttr': {
+            if (!state.xml) return state;
+
+            const newXml = { ...state.xml };
+            const attrs = newXml.storybook.$ || {};
+
+            attrs[action.payload.field] = action.payload.value;
+            newXml.storybook.$ = attrs;
+
+            return {
+                ...state,
+                xml: newXml,
+                dirty: true,
+            };
+        }
+
+        case 'updateSetupField': {
+            if (!state.xml) return state;
+
+            const newXml = { ...state.xml };
+            (newXml.storybook.setup as any)[action.payload.field] = action.payload.value;
+
+            return {
+                ...state,
+                xml: newXml,
+                dirty: true,
+            };
+        }
+
+        case 'updateAuthorName': {
+            if (!state.xml) return state;
+
+            const newXml = { ...state.xml };
+            const author = newXml.storybook.setup.author;
+
+            if (author && author.$) {
+                author.$.name = action.payload.value;
+            }
+
+            return {
+                ...state,
+                xml: newXml,
+                dirty: true,
+            };
+        }
+
+        case 'updateAuthorBio': {
+            if (!state.xml) return state;
+
+            const newXml = { ...state.xml };
+            const author = newXml.storybook.setup.author;
+
+            if (author) {
+                author._ = action.payload.value;
+            }
+
+            return {
+                ...state,
+                xml: newXml,
+                dirty: true,
+            };
+        }
+
         case 'markDirty':
             return { ...state, dirty: true };
 
