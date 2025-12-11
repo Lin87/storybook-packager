@@ -23,6 +23,10 @@ export type EditorAction =
     | { type: 'renameSection'; payload: { index: number; title: string } }
     | { type: 'addPage'; payload: { sectionIndex: number; pageType: string } }
     | { type: 'removePage'; payload: { sectionIndex: number; pageIndex: number } }
-    | { type: 'renamePage';  payload: { sectionIndex: number; pageIndex: number; title: string };}
+    | { type: 'renamePage'; payload: { sectionIndex: number; pageIndex: number; title: string } }
+    | { type: 'moveSectionUp'; payload: { index: number } }
+    | { type: 'moveSectionDown'; payload: { index: number } }
+    | { type: 'movePageUp'; payload: { sectionIndex: number; pageIndex: number }; }
+    | { type: 'movePageDown'; payload: { sectionIndex: number; pageIndex: number }; }
     | { type: 'markDirty' }
     | { type: 'clearDirty' };

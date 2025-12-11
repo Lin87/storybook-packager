@@ -4,8 +4,9 @@ import clsx from 'clsx';
 import { useImperativeHandle, forwardRef, useRef, useState } from 'react';
 import ConfirmDialog from '@/app/components/ConfirmDialog';
 import { useEditor } from '@/editor/state/EditorContext';
-import { ChevronDown, ChevronRight, Gear } from 'react-bootstrap-icons';
+import { ChevronDown, ChevronRight, Gear, CaretUpFill, CaretDownFill } from 'react-bootstrap-icons';
 import DeleteButton from '@/app/components/DeleteButton';
+import ReorderButton from '@/app/components/ReorderButton';
 
 export interface SidebarHandle {
     revealPage: (sectionIndex: number, pageIndex: number) => void;
@@ -25,7 +26,10 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
     const sections = Array.isArray(xml.storybook.section) ? xml.storybook.section : [xml.storybook.section];
 
     const [sectionToDelete, setSectionToDelete] = useState<{ index: number } | null>(null);
-    const [pageToDelete, setPageToDelete] = useState<{ section: number; page: number } | null>(null);
+    const [pageToDelete, setPageToDelete] = useState<{
+        section: number;
+        page: number;
+    } | null>(null);
     const [collapsedSections, setCollapsedSections] = useState<Record<number, boolean>>({});
 
     const isSetupSelected = state.selectedSectionIndex === null && state.selectedPageIndex === null;
@@ -81,12 +85,12 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
             </div>
 
             {/* ---------- SCROLLABLE MIDDLE REGION ---------- */}
-            <div ref={scrollRef} className='flex-1 overflow-y-auto p-2'>
+            <div ref={scrollRef} className='flex-1 overflow-y-auto'>
                 {sections.map((section, sIndex) => {
                     const isSectionSelected = state.selectedSectionIndex === sIndex && state.selectedPageIndex === null;
 
                     return (
-                        <div key={sIndex} className='mb-2'>
+                        <div key={sIndex} className={clsx('bg-base-300 hover:bg-primary/25', isSectionSelected && 'bg-primary! text-white')}>
                             {/* Section Header */}
                             <div className='flex items-center gap-1'>
                                 {/* Collapse icon */}
@@ -104,7 +108,7 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
 
                                 {/* Select section */}
                                 <div
-                                    className={clsx('cursor-pointer px-2 py-2 rounded hover:bg-base-300 flex-1', isSectionSelected && 'bg-base-300 font-semibold')}
+                                    className='cursor-pointer py-2 rounded flex-1'
                                     onClick={() =>
                                         dispatch({
                                             type: 'selectSection',
@@ -113,6 +117,32 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
                                     }>
                                     {section.$?.title || `Section ${sIndex + 1}`}
                                 </div>
+
+                                {/* Reorder Section Up */}
+                                <ReorderButton
+                                    direction='up'
+                                    disabled={sIndex === 0}
+                                    srLabel='Move section up'
+                                    onClick={() =>
+                                        dispatch({
+                                            type: 'moveSectionUp',
+                                            payload: { index: sIndex },
+                                        })
+                                    }
+                                />
+
+                                {/* Reorder Section Down */}
+                                <ReorderButton
+                                    direction='down'
+                                    disabled={sIndex === sections.length - 1}
+                                    srLabel='Move section down'
+                                    onClick={() =>
+                                        dispatch({
+                                            type: 'moveSectionDown',
+                                            payload: { index: sIndex },
+                                        })
+                                    }
+                                />
 
                                 {/* Delete section */}
                                 {sections.length > 1 && (
@@ -127,7 +157,7 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
 
                             {/* Pages */}
                             {!collapsedSections[sIndex] && (
-                                <div className='ml-8 mt-1 flex flex-col gap-1'>
+                                <div className='pb-2 flex flex-col gap-0 bg-base-200'>
                                     {(Array.isArray(section.page) ? section.page : section.page ? [section.page] : []).map((page, pIndex) => {
                                         const isPageSelected = state.selectedSectionIndex === sIndex && state.selectedPageIndex === pIndex;
 
@@ -137,7 +167,7 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
                                                 ref={(el) => {
                                                     pageRefs.current[`${sIndex}-${pIndex}`] = el;
                                                 }}
-                                                className={clsx('cursor-pointer flex items-center text-sm', isPageSelected && 'bg-base-300 font-semibold')}
+                                                className={clsx('pl-7 cursor-pointer flex items-center text-sm text-base-content hover:bg-primary/25', isPageSelected && 'bg-primary! text-white')}
                                                 onClick={() =>
                                                     dispatch({
                                                         type: 'selectPage',
@@ -147,8 +177,33 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
                                                         },
                                                     })
                                                 }>
-                                                <span className='block px-3 py-1 rounded hover:bg-base-300 flex-1'>{page.$?.title || `Page ${pIndex + 1}`}</span>
+                                                <span className='block p-2 rounded flex-1'>{page.$?.title || `Page ${pIndex + 1}`}</span>
 
+                                                {/* Page Up */}
+                                                <ReorderButton
+                                                    direction='up'
+                                                    srLabel='Move page up'
+                                                    onClick={() =>
+                                                        dispatch({
+                                                            type: 'movePageUp',
+                                                            payload: { sectionIndex: sIndex, pageIndex: pIndex },
+                                                        })
+                                                    }
+                                                />
+
+                                                {/* Page Down */}
+                                                <ReorderButton
+                                                    direction='down'
+                                                    srLabel='Move page down'
+                                                    onClick={() =>
+                                                        dispatch({
+                                                            type: 'movePageDown',
+                                                            payload: { sectionIndex: sIndex, pageIndex: pIndex },
+                                                        })
+                                                    }
+                                                />
+
+                                                {/* Delete Page */}
                                                 <DeleteButton
                                                     onClick={(e) => {
                                                         e.stopPropagation();
@@ -164,7 +219,7 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
 
                                     {/* Add Page */}
                                     <button
-                                        className='btn btn-sm btn-soft mt-1 w-full'
+                                        className='btn btn-sm btn-soft mt-1 mx-auto w-75'
                                         onClick={() =>
                                             dispatch({
                                                 type: 'addPage',
@@ -199,7 +254,7 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
                 onConfirm={() => {
                     if (sectionToDelete) {
                         dispatch({
-                            type: 'removeSection', // or 'mergeAndDeleteSection' if you implemented that
+                            type: 'removeSection', // or 'mergeAndDeleteSection' if that's what you're using
                             payload: { index: sectionToDelete.index },
                         });
                     }
