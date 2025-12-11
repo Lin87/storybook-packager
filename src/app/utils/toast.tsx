@@ -3,6 +3,7 @@ import { XLg } from "react-bootstrap-icons";
 
 export function showToast(message: string, type: "info" | "error" | "success" | "warning" = "info", icon?: React.ReactNode, dismissible = false) {
     const toastRoot = document.getElementById("global-toast");
+    
     if (!toastRoot) return;
 
     const alertClass =
