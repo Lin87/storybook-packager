@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useEditor } from '@/editor/state/EditorContext';
-import Sidebar from '@/editor/ui/Sidebar';
 import MainEditor from '@/editor/ui/MainEditor';
+import Sidebar, { SidebarHandle } from '@/editor/ui/Sidebar';
 
 export default function EditorScreen() {
     const searchParams = useSearchParams();
@@ -12,6 +12,8 @@ export default function EditorScreen() {
 
     const pathParam = searchParams.get('path');
     const [error, setError] = useState<string | null>(null);
+
+    const sidebarRef = useRef<SidebarHandle>(null);
 
     useEffect(() => {
         if (!pathParam) return;
@@ -56,8 +58,8 @@ export default function EditorScreen() {
 
     return (
         <div className='flex h-full w-full'>
-            <Sidebar />
-            <MainEditor />
+            <Sidebar ref={sidebarRef} />
+            <MainEditor sidebarRef={sidebarRef}  />
         </div>
     );
 }

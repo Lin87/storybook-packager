@@ -1,15 +1,22 @@
 'use client';
 
 import clsx from 'clsx';
-import { useState } from 'react';
+import { useImperativeHandle, forwardRef, useRef, useState } from 'react';
 import ConfirmDialog from '@/app/components/ConfirmDialog';
-import DeleteButton from '@/app/components/DeleteButton';
 import { useEditor } from '@/editor/state/EditorContext';
 import { ChevronDown, ChevronRight, Gear } from 'react-bootstrap-icons';
+import DeleteButton from '@/app/components/DeleteButton';
 
-export default function Sidebar() {
+export interface SidebarHandle {
+    revealPage: (sectionIndex: number, pageIndex: number) => void;
+}
+
+const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
     const { state, dispatch } = useEditor();
     const xml = state.xml;
+
+    const scrollRef = useRef<HTMLDivElement>(null);
+    const pageRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
     if (!xml) {
         return <div className='w-64 bg-base-200 p-4 text-sm text-gray-400'>Loading...</div>;
@@ -23,37 +30,66 @@ export default function Sidebar() {
 
     const isSetupSelected = state.selectedSectionIndex === null && state.selectedPageIndex === null;
 
+    // Expose revealPage(sectionIndex, pageIndex) to parent components
+    useImperativeHandle(ref, () => ({
+        revealPage(sectionIndex: number, pageIndex: number) {
+            // 1. Expand section if collapsed
+            setCollapsedSections((prev) => ({
+                ...prev,
+                [sectionIndex]: false,
+            }));
+
+            // 2. Wait for DOM update
+            requestAnimationFrame(() => {
+                const scrollEl = scrollRef.current;
+                const pageEl = pageRefs.current[`${sectionIndex}-${pageIndex}`];
+
+                if (scrollEl && pageEl) {
+                    const containerTop = scrollEl.getBoundingClientRect().top;
+                    const containerHeight = scrollEl.clientHeight;
+
+                    const pageTop = pageEl.getBoundingClientRect().top;
+                    const pageHeight = pageEl.clientHeight;
+
+                    // Desired center position
+                    const targetOffset = pageTop - containerTop - containerHeight / 2 + pageHeight / 2;
+
+                    scrollEl.scrollTo({
+                        top: scrollEl.scrollTop + targetOffset,
+                        behavior: 'smooth',
+                    });
+                }
+            });
+        },
+    }));
+
     return (
-        <div className='w-84 xl:w-96 bg-base-200 border-r border-base-300 h-full flex flex-col'>
+        <div className='w-84 xl:w-94 bg-base-200 border-r border-base-300 h-full flex flex-col'>
             {/* ---------- TOP FIXED REGION ---------- */}
             <div className='flex flex-wrap bg-base-100 border-b border-base-300 p-2 gap-2 justify-end'>
-                <div className='tooltip tooltip-bottom' data-tip='Presentation Setup'>
-                    <button
-                        className={clsx('btn btn-xs btn-soft', isSetupSelected && 'btn-active')}
-                        onClick={() =>
-                            dispatch({
-                                type: 'selectSection',
-                                payload: { sectionIndex: null as never },
-                            })
-                        }>
-                        <Gear size={16} />
-                        <span className='sr-only'>Presentation Setup</span>
-                    </button>
-                </div>
-
-                {/* (Future top buttons can go here) */}
+                <button
+                    className={clsx('btn btn-xs btn-soft', isSetupSelected && 'btn-active')}
+                    onClick={() =>
+                        dispatch({
+                            type: 'selectSection',
+                            payload: { sectionIndex: null as never },
+                        })
+                    }>
+                    <Gear size={16} />
+                    <span className='sr-only'>Presentation Setup</span>
+                </button>
             </div>
 
             {/* ---------- SCROLLABLE MIDDLE REGION ---------- */}
-            <div className='flex-1 overflow-y-auto p-2'>
+            <div ref={scrollRef} className='flex-1 overflow-y-auto p-2'>
                 {sections.map((section, sIndex) => {
                     const isSectionSelected = state.selectedSectionIndex === sIndex && state.selectedPageIndex === null;
 
                     return (
                         <div key={sIndex} className='mb-2'>
-                            {/* SECTION HEADER */}
+                            {/* Section Header */}
                             <div className='flex items-center gap-1'>
-                                {/* Collapse/Expand caret */}
+                                {/* Collapse icon */}
                                 <button
                                     className='btn btn-xs btn-ghost'
                                     onClick={(e) => {
@@ -78,7 +114,7 @@ export default function Sidebar() {
                                     {section.$?.title || `Section ${sIndex + 1}`}
                                 </div>
 
-                                {/* Delete Section (hidden if only one) */}
+                                {/* Delete section */}
                                 {sections.length > 1 && (
                                     <DeleteButton
                                         onClick={(e) => {
@@ -89,7 +125,7 @@ export default function Sidebar() {
                                 )}
                             </div>
 
-                            {/* PAGES (only if section is expanded) */}
+                            {/* Pages */}
                             {!collapsedSections[sIndex] && (
                                 <div className='ml-8 mt-1 flex flex-col gap-1'>
                                     {(Array.isArray(section.page) ? section.page : section.page ? [section.page] : []).map((page, pIndex) => {
@@ -98,6 +134,9 @@ export default function Sidebar() {
                                         return (
                                             <div
                                                 key={pIndex}
+                                                ref={(el) => {
+                                                    pageRefs.current[`${sIndex}-${pIndex}`] = el;
+                                                }}
                                                 className={clsx('cursor-pointer flex items-center text-sm', isPageSelected && 'bg-base-300 font-semibold')}
                                                 onClick={() =>
                                                     dispatch({
@@ -110,7 +149,6 @@ export default function Sidebar() {
                                                 }>
                                                 <span className='block px-3 py-1 rounded hover:bg-base-300 flex-1'>{page.$?.title || `Page ${pIndex + 1}`}</span>
 
-                                                {/* Delete Page */}
                                                 <DeleteButton
                                                     onClick={(e) => {
                                                         e.stopPropagation();
@@ -161,7 +199,7 @@ export default function Sidebar() {
                 onConfirm={() => {
                     if (sectionToDelete) {
                         dispatch({
-                            type: 'removeSection',
+                            type: 'removeSection', // or 'mergeAndDeleteSection' if you implemented that
                             payload: { index: sectionToDelete.index },
                         });
                     }
@@ -190,4 +228,6 @@ export default function Sidebar() {
             />
         </div>
     );
-}
+});
+
+export default Sidebar;
