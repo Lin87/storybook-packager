@@ -13,7 +13,7 @@ export default function MainEditor() {
     const pageSelected = state.selectedSectionIndex !== null && state.selectedPageIndex !== null;
 
     return (
-        <div className='flex-1 p-6 overflow-auto'>
+        <div className='flex-1 p-5 overflow-auto'>
             {isSetupSelected && <SetupEditor />}
             {sectionSelected && <SectionEditor />}
             {pageSelected && <PageEditor />}

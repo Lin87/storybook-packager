@@ -27,7 +27,7 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     return (
-        <html data-theme="night" lang="en">
+        <html data-theme="dark" lang="en">
             <body className={`${poppins.variable} ${dmMono.variable} antialiased`}>
                 <div className="toast toast-center toast-bottom z-50" id="global-toast"></div>
                 {children}

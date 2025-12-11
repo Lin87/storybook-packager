@@ -36,7 +36,7 @@ export default function SetupEditor() {
     };
 
     return (
-        <div className='space-y-6 max-w-xl'>
+        <div className='space-y-6'>
             {/* STORYBOOK GLOBAL SETTINGS */}
             <div className='divider mb-6'>Storybook Settings</div>
 
