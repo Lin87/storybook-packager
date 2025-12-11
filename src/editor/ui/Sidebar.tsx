@@ -1,7 +1,9 @@
 'use client';
 
+import ConfirmDialog from '@/app/components/ConfirmDialog';
 import { useEditor } from '@/editor/state/EditorContext';
 import clsx from 'clsx';
+import { useState } from 'react';
 
 export default function Sidebar() {
     const { state, dispatch } = useEditor();
@@ -12,6 +14,8 @@ export default function Sidebar() {
     }
 
     const sections = Array.isArray(xml.storybook.section) ? xml.storybook.section : [xml.storybook.section];
+    const [sectionToDelete, setSectionToDelete] = useState<{ index: number } | null>(null);
+    const [pageToDelete, setPageToDelete] = useState<{ section: number; page: number } | null>(null);
 
     return (
         <div className='w-64 bg-base-200 border-r border-base-300 h-full overflow-y-auto p-2 flex flex-col gap-2'>
@@ -45,6 +49,11 @@ export default function Sidebar() {
                                 }>
                                 <span>📂 {section.$?.title || `Section ${sIndex + 1}`}</span>
                             </div>
+                            {sections.length > 1 && (
+                                <button className='btn btn-xs btn-error' onClick={() => setSectionToDelete({ index: sIndex })}>
+                                    Delete
+                                </button>
+                            )}
 
                             {/* PAGES */}
                             <div className='ml-5 mt-1 flex flex-col gap-1'>
@@ -62,14 +71,65 @@ export default function Sidebar() {
                                                 })
                                             }>
                                             📄 {page.$?.title || `Page ${pIndex + 1}`}
+                                            <button className='btn btn-xs btn-error' onClick={() => setPageToDelete({ section: sIndex, page: pIndex })}>
+                                                Delete
+                                            </button>
                                         </div>
                                     );
                                 })}
                             </div>
+                            <button
+                                className='btn btn-xs btn-outline mt-1 ml-5'
+                                onClick={() =>
+                                    dispatch({
+                                        type: 'addPage',
+                                        payload: { sectionIndex: sIndex, pageType: 'image' },
+                                    })
+                                }>
+                                + Add Page
+                            </button>
                         </div>
                     );
                 })}
             </div>
+            <button className='btn btn-sm btn-primary mt-4 w-full' onClick={() => dispatch({ type: 'addSection' })}>
+                + Add Section
+            </button>
+            <ConfirmDialog
+                open={sectionToDelete !== null}
+                title='Delete Section'
+                message='The pages in this section will be moved into an adjacent section. A presentation must contain at least one section.'
+                confirmLabel='Delete Section'
+                onConfirm={() => {
+                    if (sectionToDelete) {
+                        dispatch({
+                            type: 'removeSection',
+                            payload: { index: sectionToDelete.index },
+                        });
+                    }
+                    setSectionToDelete(null);
+                }}
+                onCancel={() => setSectionToDelete(null)}
+            />
+
+            <ConfirmDialog
+                open={pageToDelete !== null}
+                title='Delete Page?'
+                message='This will delete the selected page. This action cannot be undone.'
+                onConfirm={() => {
+                    if (pageToDelete) {
+                        dispatch({
+                            type: 'removePage',
+                            payload: {
+                                sectionIndex: pageToDelete.section,
+                                pageIndex: pageToDelete.page,
+                            },
+                        });
+                    }
+                    setPageToDelete(null);
+                }}
+                onCancel={() => setPageToDelete(null)}
+            />
         </div>
     );
 }

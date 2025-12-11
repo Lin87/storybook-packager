@@ -14,9 +14,15 @@ export type EditorAction =
     | { type: 'loadXml'; payload: { presentationPath: string; xml: StorybookXml } }
     | { type: 'selectSection'; payload: { sectionIndex: number } }
     | { type: 'selectPage'; payload: { sectionIndex: number; pageIndex: number } }
-    | { type: "updateStorybookAttr"; payload: { field: string; value: string } }
-    | { type: "updateSetupField"; payload: { field: string; value: string } }
-    | { type: "updateAuthorName"; payload: { value: string } }
-    | { type: "updateAuthorBio"; payload: { value: string } }
+    | { type: 'updateStorybookAttr'; payload: { field: string; value: string } }
+    | { type: 'updateSetupField'; payload: { field: string; value: string } }
+    | { type: 'updateAuthorName'; payload: { value: string } }
+    | { type: 'updateAuthorBio'; payload: { value: string } }
+    | { type: 'addSection' }
+    | { type: 'removeSection'; payload: { index: number } }
+    | { type: 'renameSection'; payload: { index: number; title: string } }
+    | { type: 'addPage'; payload: { sectionIndex: number; pageType: string } }
+    | { type: 'removePage'; payload: { sectionIndex: number; pageIndex: number } }
+    | { type: 'renamePage';  payload: { sectionIndex: number; pageIndex: number; title: string };}
     | { type: 'markDirty' }
     | { type: 'clearDirty' };
