@@ -3,7 +3,7 @@
 import { useEditor } from '@/editor/state/EditorContext';
 import { ChevronDoubleRight } from 'react-bootstrap-icons';
 import type { RefObject } from 'react';
-import { SidebarHandle } from './Sidebar';
+import { SidebarHandle } from './Sidebar/Sidebar';
 
 interface SectionEditorProps {
     sidebarRef: RefObject<SidebarHandle | null>;

@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useEditor } from '@/editor/state/EditorContext';
 import MainEditor from '@/editor/ui/MainEditor';
-import Sidebar, { SidebarHandle } from '@/editor/ui/Sidebar';
+import Sidebar, { SidebarHandle } from '@/editor/ui/Sidebar/Sidebar';
 
 export default function EditorScreen() {
     const searchParams = useSearchParams();

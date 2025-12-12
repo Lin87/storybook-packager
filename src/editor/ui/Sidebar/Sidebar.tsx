@@ -11,9 +11,12 @@ import { useEditor } from '@/editor/state/EditorContext';
 
 import { ChevronDown, ChevronRight, Gear } from 'react-bootstrap-icons';
 
-import { DndContext, closestCenter, DragOverEvent, DragEndEvent, useDroppable, DragOverlay } from '@dnd-kit/core';
+import { DndContext, closestCenter, DragOverlay } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+
+import { useSidebarDnD } from '@/editor/ui/Sidebar/useSidebarDnD';
+import { getSectionTitle, getPageTitle } from '@/editor/ui/Sidebar/sidebarUtils';
 
 /* =========================================================
    Types
@@ -50,8 +53,10 @@ function SortableItem({ id, data, children }: { id: string; data: any; children:
 }
 
 /* =========================================================
-   Section Drop Zone (for cross-section drops)
+   Section Drop Zone
 ========================================================= */
+
+import { useDroppable } from '@dnd-kit/core';
 
 function SectionPageDropZone({ sectionIndex, children }: { sectionIndex: number; children: ReactNode }) {
     const { setNodeRef } = useDroppable({
@@ -72,32 +77,33 @@ function SectionPageDropZone({ sectionIndex, children }: { sectionIndex: number;
 const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
     const { state, dispatch } = useEditor();
     const xml = state.xml;
-
     const scrollRef = useRef<HTMLDivElement>(null);
     const pageRefs = useRef<Record<string, HTMLDivElement | null>>({});
-    const expandTimeout = useRef<number | null>(null);
 
     if (!xml) {
         return <div className='w-64 bg-base-200 p-4 text-sm text-gray-400'>Loading…</div>;
     }
 
     const sections = Array.isArray(xml.storybook.section) ? xml.storybook.section : [xml.storybook.section];
-
     const [collapsedSections, setCollapsedSections] = useState<Record<number, boolean>>({});
     const [sectionToDelete, setSectionToDelete] = useState<{ index: number } | null>(null);
     const [pageToDelete, setPageToDelete] = useState<{ section: number; page: number } | null>(null);
-
-    const [pageDropIndicator, setPageDropIndicator] = useState<{
-        sectionIndex: number;
-        pageIndex: number;
-    } | null>(null);
-    const [activeDragItem, setActiveDragItem] = useState<any>(null);
-
     const isSetupSelected = state.selectedSectionIndex === null && state.selectedPageIndex === null;
 
-    /* =========================================================
+    /* =====================================================
+       Drag & Drop (extracted)
+    ===================================================== */
+
+    const { activeDragItem, pageDropIndicator, handleDragStart, handleDragOver, handleDragEnd, clearIndicator } = useSidebarDnD({
+        sections,
+        collapsedSections,
+        setCollapsedSections,
+        dispatch,
+    });
+
+    /* =====================================================
        revealPage API
-    ========================================================= */
+    ===================================================== */
 
     useImperativeHandle(ref, () => ({
         revealPage(sectionIndex, pageIndex) {
@@ -126,156 +132,9 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
         },
     }));
 
-    /* =========================================================
-       Drag Handlers
-    ========================================================= */
-
-    function handleDragStart(event: any) {
-        const active = event.active?.data?.current;
-        if (!active) return;
-
-        setActiveDragItem(active);
-
-        if (active.type === 'section') {
-            setCollapsedSections(Object.fromEntries(sections.map((_, i) => [i, true])));
-        }
-    }
-
-    function handleDragOver(event: DragOverEvent) {
-        const { active, over } = event;
-
-        if (!active || !over) {
-            setPageDropIndicator(null);
-            return;
-        }
-
-        const a = active.data?.current;
-        const o = over.data?.current;
-
-        if (!a || !o) {
-            setPageDropIndicator(null);
-            return;
-        }
-
-        /* ---- Auto-expand collapsed section ---- */
-        if (a.type === 'page' && o.sectionIndex != null && collapsedSections[o.sectionIndex]) {
-            if (!expandTimeout.current) {
-                expandTimeout.current = window.setTimeout(() => {
-                    setCollapsedSections((prev) => ({
-                        ...prev,
-                        [o.sectionIndex]: false,
-                    }));
-                    expandTimeout.current = null;
-                }, 400);
-            }
-        }
-
-        /* ---- Precise insertion indicator (cross-section only) ---- */
-        if (a.type === 'page' && a.sectionIndex !== o.sectionIndex) {
-            if (o.type === 'page') {
-                setPageDropIndicator({
-                    sectionIndex: o.sectionIndex,
-                    pageIndex: o.pageIndex,
-                });
-                return;
-            }
-
-            if (o.type === 'section-drop') {
-                setPageDropIndicator({
-                    sectionIndex: o.sectionIndex,
-                    pageIndex: 0,
-                });
-                return;
-            }
-        }
-
-        setPageDropIndicator(null);
-    }
-
-    function handleDragEnd(event: DragEndEvent) {
-        const { active, over } = event;
-        setActiveDragItem(null);
-        setPageDropIndicator(null);
-
-        if (!over) return;
-
-        const a = active.data.current;
-        const o = over.data.current;
-        if (!a || !o) return;
-
-        /* ----- SECTION REORDER ----- */
-        if (a.type === 'section' && o.type === 'section') {
-            if (a.sectionIndex !== o.sectionIndex) {
-                dispatch({
-                    type: 'reorderSections',
-                    payload: {
-                        fromIndex: a.sectionIndex,
-                        toIndex: o.sectionIndex,
-                    },
-                });
-            }
-            return;
-        }
-
-        /* ----- PAGE → SECTION (top) ----- */
-        if (a.type === 'page' && o.type === 'section-drop') {
-            dispatch({
-                type: 'movePageBetweenSections',
-                payload: {
-                    fromSectionIndex: a.sectionIndex,
-                    fromPageIndex: a.pageIndex,
-                    toSectionIndex: o.sectionIndex,
-                    toPageIndex: 0,
-                },
-            });
-            return;
-        }
-
-        /* ----- PAGE → PAGE ----- */
-        if (a.type === 'page' && o.type === 'page') {
-            if (a.sectionIndex === o.sectionIndex) {
-                dispatch({
-                    type: 'reorderPages',
-                    payload: {
-                        sectionIndex: a.sectionIndex,
-                        fromIndex: a.pageIndex,
-                        toIndex: o.pageIndex,
-                    },
-                });
-            } else {
-                dispatch({
-                    type: 'movePageBetweenSections',
-                    payload: {
-                        fromSectionIndex: a.sectionIndex,
-                        fromPageIndex: a.pageIndex,
-                        toSectionIndex: o.sectionIndex,
-                        toPageIndex: o.pageIndex,
-                    },
-                });
-            }
-        }
-    }
-
-    /* =========================================================
-       Helpers
-    ========================================================= */
-
-    function getSectionTitle(index: number) {
-        const section = state.xml?.storybook.section[index];
-        return section?.$?.title || `Section ${index + 1}`;
-    }
-
-    function getPageTitle(sectionIndex: number, pageIndex: number) {
-        const section = state.xml?.storybook.section[sectionIndex];
-        const pages = Array.isArray(section?.page) ? section.page : section?.page ? [section.page] : [];
-
-        const page = pages[pageIndex];
-        return page?.$?.title || `Page ${pageIndex + 1}`;
-    }
-
-    /* =========================================================
+    /* =====================================================
        Render
-    ========================================================= */
+    ===================================================== */
 
     return (
         <div className='w-84 xl:w-94 bg-base-200 border-r border-base-300 h-full flex flex-col'>
@@ -295,7 +154,7 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
 
             {/* SCROLLABLE */}
             <div ref={scrollRef} className='flex-1 overflow-y-auto p-2'>
-                <DndContext collisionDetection={closestCenter} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd} onDragCancel={() => setPageDropIndicator(null)}>
+                <DndContext collisionDetection={closestCenter} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd} onDragCancel={clearIndicator}>
                     <SortableContext items={sections.map((_, i) => `section-${i}`)} strategy={verticalListSortingStrategy}>
                         {sections.map((section, sIndex) => {
                             const pages = Array.isArray(section.page) ? section.page : section.page ? [section.page] : [];
@@ -327,7 +186,7 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
                                                             payload: { sectionIndex: sIndex },
                                                         })
                                                     }>
-                                                    {section.$?.title || `Section ${sIndex + 1}`}
+                                                    {getSectionTitle(xml, sIndex)}
                                                 </div>
 
                                                 {sections.length > 1 && <DeleteButton onClick={() => setSectionToDelete({ index: sIndex })} />}
@@ -340,7 +199,6 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
                                                         <SortableContext items={pages.map((_, i) => `page-${sIndex}-${i}`)} strategy={verticalListSortingStrategy}>
                                                             {pages.map((page, pIndex) => (
                                                                 <div key={pIndex}>
-                                                                    {/* INSERTION INDICATOR */}
                                                                     {pageDropIndicator && pageDropIndicator.sectionIndex === sIndex && pageDropIndicator.pageIndex === pIndex && <div className='my-1 h-[2px] bg-primary rounded-full opacity-70' />}
 
                                                                     <SortableItem
@@ -369,7 +227,7 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
                                                                                 }>
                                                                                 <DragHandle attributes={attributes} listeners={listeners} />
 
-                                                                                <span className='flex-1 px-3 py-1'>{page.$?.title || `Page ${pIndex + 1}`}</span>
+                                                                                <span className='flex-1 px-3 py-1'>{getPageTitle(xml, sIndex, pIndex)}</span>
 
                                                                                 <DeleteButton
                                                                                     onClick={() =>
@@ -385,8 +243,7 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
                                                                 </div>
                                                             ))}
 
-                                                            {/* EMPTY SECTION INDICATOR */}
-                                                            {pages.length === 0 && pageDropIndicator?.sectionIndex === sIndex && <div className='my-2 h-0.5 bg-primary rounded-full opacity-70' />}
+                                                            {pages.length === 0 && pageDropIndicator?.sectionIndex === sIndex && <div className='my-2 h-[2px] bg-primary rounded-full opacity-70' />}
                                                         </SortableContext>
                                                     </div>
                                                 )}
@@ -397,10 +254,11 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
                             );
                         })}
                     </SortableContext>
-                    <DragOverlay adjustScale={false}>
-                        {activeDragItem?.type === 'section' && <div className='px-3 py-2 bg-base-300 rounded shadow text-sm'>{getSectionTitle(activeDragItem.sectionIndex)}</div>}
 
-                        {activeDragItem?.type === 'page' && <div className='px-3 py-1 bg-base-300 rounded shadow text-sm'>{getPageTitle(activeDragItem.sectionIndex, activeDragItem.pageIndex)}</div>}
+                    <DragOverlay adjustScale={false}>
+                        {activeDragItem?.type === 'section' && <div className='px-3 py-2 bg-base-300 rounded shadow text-sm'>{getSectionTitle(xml, activeDragItem.sectionIndex)}</div>}
+
+                        {activeDragItem?.type === 'page' && <div className='px-3 py-1 bg-base-300 rounded shadow text-sm'>{getPageTitle(xml, activeDragItem.sectionIndex, activeDragItem.pageIndex)}</div>}
                     </DragOverlay>
                 </DndContext>
             </div>

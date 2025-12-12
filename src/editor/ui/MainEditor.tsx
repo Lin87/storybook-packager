@@ -5,7 +5,7 @@ import { useEditor } from '@/editor/state/EditorContext';
 import SetupEditor from './SetupEditor';
 import SectionEditor from './SectionEditor';
 import PageEditor from './PageEditor';
-import { SidebarHandle } from './Sidebar';
+import { SidebarHandle } from './Sidebar/Sidebar';
 
 interface MainEditorProps {
     sidebarRef: RefObject<SidebarHandle | null>;
