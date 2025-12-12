@@ -24,9 +24,8 @@ export type EditorAction =
     | { type: 'addPage'; payload: { sectionIndex: number; pageType: string } }
     | { type: 'removePage'; payload: { sectionIndex: number; pageIndex: number } }
     | { type: 'renamePage'; payload: { sectionIndex: number; pageIndex: number; title: string } }
-    | { type: 'moveSectionUp'; payload: { index: number } }
-    | { type: 'moveSectionDown'; payload: { index: number } }
-    | { type: 'movePageUp'; payload: { sectionIndex: number; pageIndex: number }; }
-    | { type: 'movePageDown'; payload: { sectionIndex: number; pageIndex: number }; }
+    | { type: 'reorderSections'; payload: { fromIndex: number; toIndex: number } }
+    | { type: 'reorderPages'; payload: { sectionIndex: number; fromIndex: number; toIndex: number } }
+    | { type: 'movePageBetweenSections'; payload: { fromSectionIndex: number; fromPageIndex: number; toSectionIndex: number; toPageIndex: number; } }
     | { type: 'markDirty' }
     | { type: 'clearDirty' };
