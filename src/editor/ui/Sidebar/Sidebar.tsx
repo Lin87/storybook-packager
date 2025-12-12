@@ -199,7 +199,7 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
                                                         <SortableContext items={pages.map((_, i) => `page-${sIndex}-${i}`)} strategy={verticalListSortingStrategy}>
                                                             {pages.map((page, pIndex) => (
                                                                 <div key={pIndex}>
-                                                                    {pageDropIndicator && pageDropIndicator.sectionIndex === sIndex && pageDropIndicator.pageIndex === pIndex && <div className='my-1 h-[2px] bg-primary rounded-full opacity-70' />}
+                                                                    {pageDropIndicator && pageDropIndicator.sectionIndex === sIndex && pageDropIndicator.pageIndex === pIndex && <div className='my-1 h-0.5 bg-primary rounded-full opacity-70' />}
 
                                                                     <SortableItem
                                                                         id={`page-${sIndex}-${pIndex}`}
@@ -243,7 +243,7 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
                                                                 </div>
                                                             ))}
 
-                                                            {pages.length === 0 && pageDropIndicator?.sectionIndex === sIndex && <div className='my-2 h-[2px] bg-primary rounded-full opacity-70' />}
+                                                            {pages.length === 0 && pageDropIndicator?.sectionIndex === sIndex && <div className='my-2 h-0.5 bg-primary rounded-full opacity-70' />}
                                                         </SortableContext>
                                                     </div>
                                                 )}
