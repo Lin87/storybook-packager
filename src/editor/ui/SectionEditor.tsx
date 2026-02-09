@@ -13,7 +13,7 @@ export default function SectionEditor({ sidebarRef }: SectionEditorProps) {
     const { state, dispatch } = useEditor();
 
     const sIndex = state.selectedSectionIndex!;
-    const section = state.xml!.storybook.section[sIndex];
+    const section = Array.isArray(state.xml!.storybook.section) ? state.xml!.storybook.section[sIndex] : state.xml!.storybook.section;
 
     const updateSectionTitle = (value: string) => {
         dispatch({

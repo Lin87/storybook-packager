@@ -7,7 +7,8 @@ export default function PageEditor() {
 
     const sIndex = state.selectedSectionIndex!;
     const pIndex = state.selectedPageIndex!;
-    const page = state.xml!.storybook.section[sIndex].page[pIndex];
+    const section = Array.isArray(state.xml!.storybook.section) ? state.xml!.storybook.section[sIndex] : state.xml!.storybook.section;
+    const page = Array.isArray(section.page) ? section.page[pIndex] : section.page;
 
     const updatePageTitle = (value: string) => {
         dispatch({
