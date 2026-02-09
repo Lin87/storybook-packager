@@ -24,6 +24,7 @@ const recentFilePath: string = path.join(app.getPath('userData'), 'recent.json')
 let welcomeWindow: BrowserWindow | null = null;
 let staticServer: http.Server | null = null;
 let staticPort: number;
+let lastClosedWindow: 'editor' | 'welcome' | null = null;
 
 async function startStaticServer(): Promise<number> {
     const staticPath = path.join(process.cwd(), 'out');
@@ -158,6 +159,7 @@ function registerIpcHandlers() {
         });
 
         editorWindow.on('close', () => {
+            lastClosedWindow = 'editor';
             saveEditorWindowState(editorWindow);
         });
 
@@ -224,6 +226,7 @@ function createWelcomeWindow() {
     welcomeWindow.loadURL(startURL);
 
     welcomeWindow.on('close', () => {
+        lastClosedWindow = 'welcome';
         saveWelcomeWindowState(welcomeWindow!);
     });
 }
@@ -243,7 +246,13 @@ app.on('activate', () => {
 });
 
 app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') app.quit();
+    if (process.platform !== 'darwin') {
+        if (lastClosedWindow === 'welcome') {
+            app.quit();
+        } else {
+            createWelcomeWindow();
+        }
+    }
 });
 
 app.on('before-quit', () => {
@@ -275,6 +284,10 @@ function createPresentationFolders(basePath: string, title: string) {
     <author name="Author Name"></author>
   </setup>
   <section title="">
+    <page type="image" src="Page1" title="Page 1">
+      <note />
+      <description />
+    </page>
   </section>
 </storybook>`;
 
