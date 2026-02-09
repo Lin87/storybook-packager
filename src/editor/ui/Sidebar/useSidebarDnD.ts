@@ -1,17 +1,7 @@
 import { useRef, useState } from 'react';
 import type { DragOverEvent, DragEndEvent } from '@dnd-kit/core';
 
-export function useSidebarDnD({
-    sections,
-    collapsedSections,
-    setCollapsedSections,
-    dispatch,
-}: {
-    sections: any[];
-    collapsedSections: Record<number, boolean>;
-    setCollapsedSections: React.Dispatch<React.SetStateAction<Record<number, boolean>>>;
-    dispatch: Function;
-}) {
+export function useSidebarDnD({ sections, collapsedSections, setCollapsedSections, dispatch }: { sections: any[]; collapsedSections: Record<number, boolean>; setCollapsedSections: React.Dispatch<React.SetStateAction<Record<number, boolean>>>; dispatch: Function }) {
     const expandTimeout = useRef<number | null>(null);
 
     const [pageDropIndicator, setPageDropIndicator] = useState<{
@@ -81,13 +71,14 @@ export function useSidebarDnD({
 
     function handleDragEnd(event: DragEndEvent) {
         const { active, over } = event;
-        setActiveDragItem(null);
         setPageDropIndicator(null);
+        setActiveDragItem(null);
 
         if (!over) return;
 
         const a = active.data.current;
         const o = over.data.current;
+
         if (!a || !o) return;
 
         if (a.type === 'section' && o.type === 'section') {

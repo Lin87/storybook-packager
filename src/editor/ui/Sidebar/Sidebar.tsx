@@ -247,9 +247,8 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
                         })}
                     </SortableContext>
 
-                    <DragOverlay adjustScale={false}>
+                    <DragOverlay adjustScale={false} dropAnimation={{duration: 0, easing: 'linear'}}>
                         {activeDragItem?.type === 'section' && <div className='px-3 py-2 bg-base-300 rounded shadow text-sm'>{getSectionTitle(xml, activeDragItem.sectionIndex)}</div>}
-
                         {activeDragItem?.type === 'page' && <div className='px-3 py-1 bg-base-300 rounded shadow text-sm'>{getPageTitle(xml, activeDragItem.sectionIndex, activeDragItem.pageIndex)}</div>}
                     </DragOverlay>
                 </DndContext>
