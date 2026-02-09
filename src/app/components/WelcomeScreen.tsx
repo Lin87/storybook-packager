@@ -5,21 +5,26 @@ import NewPresentationButton from "./NewPresentationButton";
 import OpenExistingButton from "./OpenExistingButton";
 
 export default function WelcomeScreen() {
+
+    const currentYear = new Date().getFullYear();
+
     return (
         <>
-            <AppTitleBar />
-            <div className="flex justify-center h-full bg-base-200 rounded-md p-8 overflow-hidden">
-                <div className="flex flex-col items-center justify-center flex-1 space-y-6 pr-8 select-none">
-                    <img src="/icons/icon.png" alt="Storybook Packager" className="w-40 mb-4" />
-                    <h1 className="text-3xl font-bold mb-6">Storybook Packager</h1>
-                    <div className="space-x-4 mb-6">
-                        <NewPresentationButton />
-                        <OpenExistingButton />
+            <div className="flex flex-col h-full">
+                <AppTitleBar />
+                <div className="flex flex-1 justify-center bg-base-200 rounded-md p-8 pt-1 overflow-hidden">
+                    <div className="flex flex-col items-center justify-center flex-1 space-y-6 pr-8 select-none">
+                        <img src="/icons/icon.png" alt="Storybook Packager" className="w-40 mb-4" />
+                        <h1 className="text-3xl font-bold mb-6">Storybook Packager</h1>
+                        <div className="space-x-4 mb-6">
+                            <NewPresentationButton />
+                            <OpenExistingButton />
+                        </div>
+                        <p className="text-center text-xs text-gray-500 dark:text-gray-400">Copyright &copy; {currentYear} Ethan Lin. Sponsored by Excelsior University.</p>
                     </div>
-                    <p className="text-center text-xs text-gray-400">Copyright &copy; 2025 Ethan Lin</p>
-                </div>
-                <div className="flex-1">
-                    <RecentFilesSection />
+                    <div className="flex-1">
+                        <RecentFilesSection />
+                    </div>
                 </div>
             </div>
         </>

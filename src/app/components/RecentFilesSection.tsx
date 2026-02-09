@@ -39,9 +39,9 @@ function RecentFilesSection() {
     };
 
     return (
-        <div className="w-full h-full">
-            <h2 className="text-sm text-gray-300 mb-2">Recent Presentations</h2>
-            <div className="w-full h-82 bg-base-300 rounded-md">
+        <div className="flex flex-col w-full h-full gap-1">
+            <h2 className="flex items-center text-sm dark:text-gray-300">Recent Presentations</h2>
+            <div className="w-full flex-1 bg-base-300 rounded-md">
                 {recentFiles.length > 0 ? (
                     <ul className="menu w-full h-full overflow-y-auto">
                         {recentFiles.map((fullPath, idx) => {
@@ -59,7 +59,7 @@ function RecentFilesSection() {
                         })}
                     </ul>
                 ) : (
-                    <p className="text-xs text-gray-400 italic p-3">No recent presentations</p>
+                    <p className="text-xs text-gray-700 dark:text-gray-400 italic p-3">No recent presentations</p>
                 )}
             </div>
         </div>
