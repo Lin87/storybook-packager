@@ -228,15 +228,7 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
                                                                                 <DragHandle attributes={attributes} listeners={listeners} />
 
                                                                                 <span className='flex-1 px-3 py-1'>{getPageTitle(xml, sIndex, pIndex)}</span>
-
-                                                                                <DeleteButton
-                                                                                    onClick={() =>
-                                                                                        setPageToDelete({
-                                                                                            section: sIndex,
-                                                                                            page: pIndex,
-                                                                                        })
-                                                                                    }
-                                                                                />
+                                                                                <DeleteButton onClick={() => setPageToDelete({section: sIndex, page: pIndex})} />
                                                                             </div>
                                                                         )}
                                                                     </SortableItem>
@@ -265,7 +257,7 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
 
             {/* BOTTOM */}
             <div className='p-2 bg-base-100 border-t border-base-300'>
-                <button className='btn btn-primary w-full' onClick={() => dispatch({ type: 'addSection' })}>
+                <button type='button' className='btn btn-primary w-full' onClick={() => dispatch({ type: 'addSection' })}>
                     + Add Section
                 </button>
             </div>

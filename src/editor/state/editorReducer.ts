@@ -1,10 +1,5 @@
 import type { EditorState, EditorAction } from './editorTypes';
 
-function ensurePageArray(section: any): any[] {
-    if (!section.page) return [];
-    return Array.isArray(section.page) ? section.page : [section.page];
-}
-
 function arrayMove<T>(arr: T[], from: number, to: number): T[] {
     const copy = [...arr];
     const [item] = copy.splice(from, 1);
@@ -50,15 +45,21 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         case 'updateStorybookAttr': {
             if (!state.xml) return state;
 
-            const newXml = { ...state.xml };
-            const attrs = newXml.storybook.$ || {};
-
-            attrs[action.payload.field] = action.payload.value;
-            newXml.storybook.$ = attrs;
+            const sb = state.xml.storybook;
+            const prevAttrs = sb.$ ?? {};
 
             return {
                 ...state,
-                xml: newXml,
+                xml: {
+                    ...state.xml,
+                    storybook: {
+                        ...sb,
+                        $: {
+                            ...prevAttrs,
+                            [action.payload.field]: action.payload.value,
+                        },
+                    },
+                },
                 dirty: true,
             };
         }
@@ -66,12 +67,21 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         case 'updateSetupField': {
             if (!state.xml) return state;
 
-            const newXml = { ...state.xml };
-            (newXml.storybook.setup as any)[action.payload.field] = action.payload.value;
+            const sb = state.xml.storybook;
+            const setup = sb.setup;
 
             return {
                 ...state,
-                xml: newXml,
+                xml: {
+                    ...state.xml,
+                    storybook: {
+                        ...sb,
+                        setup: {
+                            ...setup,
+                            [action.payload.field]: action.payload.value,
+                        } as any,
+                    },
+                },
                 dirty: true,
             };
         }
@@ -79,16 +89,31 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         case 'updateAuthorName': {
             if (!state.xml) return state;
 
-            const newXml = { ...state.xml };
-            const author = newXml.storybook.setup.author;
+            const sb = state.xml.storybook;
+            const setup = sb.setup;
+            const author = setup.author;
 
-            if (author && author.$) {
-                author.$.name = action.payload.value;
-            }
+            // If author or author.$ is missing, create it
+            const nextAuthor = {
+                ...(author ?? { _: '' }),
+                $: {
+                    ...(author && author.$ ? author.$ : {}),
+                    name: action.payload.value,
+                },
+            };
 
             return {
                 ...state,
-                xml: newXml,
+                xml: {
+                    ...state.xml,
+                    storybook: {
+                        ...sb,
+                        setup: {
+                            ...setup,
+                            author: nextAuthor,
+                        },
+                    },
+                },
                 dirty: true,
             };
         }
@@ -96,16 +121,27 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         case 'updateAuthorBio': {
             if (!state.xml) return state;
 
-            const newXml = { ...state.xml };
-            const author = newXml.storybook.setup.author;
+            const sb = state.xml.storybook;
+            const setup = sb.setup;
+            const author = setup.author;
 
-            if (author) {
-                author._ = action.payload.value;
-            }
+            const nextAuthor = {
+                ...(author ?? { $: { name: '' } }),
+                _: action.payload.value,
+            };
 
             return {
                 ...state,
-                xml: newXml,
+                xml: {
+                    ...state.xml,
+                    storybook: {
+                        ...sb,
+                        setup: {
+                            ...setup,
+                            author: nextAuthor,
+                        },
+                    },
+                },
                 dirty: true,
             };
         }
@@ -113,66 +149,68 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         case 'addSection': {
             if (!state.xml) return state;
 
-            const newXml = { ...state.xml };
-            const sections = [...newXml.storybook.section];
+            const sb = state.xml.storybook;
 
-            sections.push({
-                $: { title: `New Section ${sections.length + 1}` },
+            const currentSectionsRaw = sb.section as any;
+            const currentSections = Array.isArray(currentSectionsRaw) ? currentSectionsRaw : currentSectionsRaw ? [currentSectionsRaw] : [];
+
+            const newSection = {
+                $: { title: `New Section ${currentSections.length + 1}` },
                 page: [],
-            });
+            };
 
-            newXml.storybook.section = sections;
+            const nextSections = [...currentSections, newSection];
 
-            return { ...state, xml: newXml, dirty: true };
+            return {
+                ...state,
+                xml: {
+                    ...state.xml,
+                    storybook: {
+                        ...sb,
+                        section: nextSections, // always array going forward
+                    },
+                },
+                dirty: true,
+            };
         }
 
         case 'removeSection': {
             if (!state.xml) return state;
 
             const { index } = action.payload;
-            const newXml = { ...state.xml };
-            const sections = [...newXml.storybook.section];
+            const sb = state.xml.storybook;
 
-            // Rule: section index must be valid
-            if (index < 0 || index >= sections.length) {
-                console.warn('Invalid section index for deletion:', index);
-                return state;
-            }
+            const raw = sb.section as any;
+            const sections = Array.isArray(raw) ? raw : raw ? [raw] : [];
 
-            // Cannot delete last remaining section
-            if (sections.length === 1) {
-                console.warn('Cannot delete the only section.');
-                return state;
-            }
+            if (index < 0 || index >= sections.length) return state;
+            if (sections.length === 1) return state;
 
             const current = sections[index];
-
-            // Defensive: in case current exists but missing page structure
             const currentPages = Array.isArray(current.page) ? current.page : current.page ? [current.page] : [];
 
-            let targetIndex: number;
-
-            // If deleting the first section, merge into next section
-            if (index === 0) {
-                targetIndex = 1;
-            } else {
-                targetIndex = index - 1;
-            }
-
+            const targetIndex = index === 0 ? 1 : index - 1;
             const target = sections[targetIndex];
+
             const targetPages = Array.isArray(target.page) ? target.page : target.page ? [target.page] : [];
 
-            // Merge pages
-            target.page = [...targetPages, ...currentPages];
+            const nextTarget = {
+                ...target,
+                page: [...targetPages, ...currentPages],
+            };
 
-            // Delete section
-            sections.splice(index, 1);
-
-            newXml.storybook.section = sections;
+            const nextSections = sections.map((s, i) => (i === targetIndex ? nextTarget : s));
+            nextSections.splice(index, 1);
 
             return {
                 ...state,
-                xml: newXml,
+                xml: {
+                    ...state.xml,
+                    storybook: {
+                        ...sb,
+                        section: nextSections,
+                    },
+                },
                 selectedSectionIndex: null,
                 selectedPageIndex: null,
                 dirty: true,
@@ -182,35 +220,71 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         case 'renameSection': {
             if (!state.xml) return state;
 
-            const newXml = { ...state.xml };
-            const section = newXml.storybook.section[action.payload.index];
+            const sb = state.xml.storybook;
+            const raw = sb.section as any;
+            const sections = Array.isArray(raw) ? raw : raw ? [raw] : [];
 
-            if (section.$) {
-                section.$.title = action.payload.title;
-            }
+            const idx = action.payload.index;
+            if (idx < 0 || idx >= sections.length) return state;
 
-            return { ...state, xml: newXml, dirty: true };
+            const section = sections[idx];
+            const nextSection = {
+                ...section,
+                $: {
+                    ...(section.$ ?? {}),
+                    title: action.payload.title,
+                },
+            };
+
+            const nextSections = sections.map((s, i) => (i === idx ? nextSection : s));
+
+            return {
+                ...state,
+                xml: {
+                    ...state.xml,
+                    storybook: {
+                        ...sb,
+                        section: nextSections,
+                    },
+                },
+                dirty: true,
+            };
         }
 
         case 'addPage': {
             if (!state.xml) return state;
-            const { sectionIndex, pageType } = action.payload;
 
-            const newXml = { ...state.xml };
-            const section = newXml.storybook.section[sectionIndex];
+            const { sectionIndex, pageType } = action.payload;
+            const sb = state.xml.storybook;
+
+            const raw = sb.section as any;
+            const sections = Array.isArray(raw) ? raw : raw ? [raw] : [];
+
+            if (sectionIndex < 0 || sectionIndex >= sections.length) return state;
+
+            const section = sections[sectionIndex];
+            const pages = Array.isArray(section.page) ? section.page : section.page ? [section.page] : [];
 
             const newPage = {
-                $: {
-                    type: pageType,
-                    title: 'New Page',
-                },
+                $: { type: pageType, title: 'New Page' },
             };
 
-            section.page = Array.isArray(section.page) ? [...section.page, newPage] : [newPage];
+            const nextSection = {
+                ...section,
+                page: [...pages, newPage],
+            };
+
+            const nextSections = sections.map((s, i) => (i === sectionIndex ? nextSection : s));
 
             return {
                 ...state,
-                xml: newXml,
+                xml: {
+                    ...state.xml,
+                    storybook: {
+                        ...sb,
+                        section: nextSections,
+                    },
+                },
                 dirty: true,
             };
         }
@@ -219,17 +293,36 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
             if (!state.xml) return state;
 
             const { sectionIndex, pageIndex } = action.payload;
-            const newXml = { ...state.xml };
+            const sb = state.xml.storybook;
 
-            const section = newXml.storybook.section[sectionIndex];
-            const pages = Array.isArray(section.page) ? [...section.page] : [];
+            const raw = sb.section as any;
+            const sections = Array.isArray(raw) ? raw : raw ? [raw] : [];
 
-            pages.splice(pageIndex, 1);
-            section.page = pages;
+            if (sectionIndex < 0 || sectionIndex >= sections.length) return state;
+
+            const section = sections[sectionIndex];
+            const pages = Array.isArray(section.page) ? section.page : section.page ? [section.page] : [];
+
+            if (pageIndex < 0 || pageIndex >= pages.length) return state;
+
+            const nextPages = pages.filter((_: any, i: number) => i !== pageIndex);
+
+            const nextSection = {
+                ...section,
+                page: nextPages,
+            };
+
+            const nextSections = sections.map((s, i) => (i === sectionIndex ? nextSection : s));
 
             return {
                 ...state,
-                xml: newXml,
+                xml: {
+                    ...state.xml,
+                    storybook: {
+                        ...sb,
+                        section: nextSections,
+                    },
+                },
                 selectedPageIndex: null,
                 dirty: true,
             };
@@ -239,14 +332,42 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
             if (!state.xml) return state;
 
             const { sectionIndex, pageIndex, title } = action.payload;
-            const newXml = { ...state.xml };
+            const sb = state.xml.storybook;
 
-            const page = newXml.storybook.section[sectionIndex].page[pageIndex];
-            if (page.$) {
-                page.$.title = title;
-            }
+            const raw = sb.section as any;
+            const sections = Array.isArray(raw) ? raw : raw ? [raw] : [];
 
-            return { ...state, xml: newXml, dirty: true };
+            if (sectionIndex < 0 || sectionIndex >= sections.length) return state;
+
+            const section = sections[sectionIndex];
+            const pages = Array.isArray(section.page) ? section.page : section.page ? [section.page] : [];
+
+            if (pageIndex < 0 || pageIndex >= pages.length) return state;
+
+            const page = pages[pageIndex];
+            const nextPage = {
+                ...page,
+                $: {
+                    ...(page.$ ?? {}),
+                    title,
+                },
+            };
+
+            const nextPages = pages.map((p: any, i: number) => (i === pageIndex ? nextPage : p));
+            const nextSection = { ...section, page: nextPages };
+            const nextSections = sections.map((s, i) => (i === sectionIndex ? nextSection : s));
+
+            return {
+                ...state,
+                xml: {
+                    ...state.xml,
+                    storybook: {
+                        ...sb,
+                        section: nextSections,
+                    },
+                },
+                dirty: true,
+            };
         }
 
         case 'reorderSections': {
@@ -255,19 +376,26 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
             const { fromIndex, toIndex } = action.payload;
             if (fromIndex === toIndex) return state;
 
-            const sections = [...state.xml.storybook.section];
+            const sb = state.xml.storybook;
+            const raw = sb.section as any;
+            const sections = Array.isArray(raw) ? raw : raw ? [raw] : [];
+
+            if (fromIndex < 0 || fromIndex >= sections.length || toIndex < 0 || toIndex >= sections.length) return state;
+
             const reordered = arrayMove(sections, fromIndex, toIndex);
+
+            const nextSelectedSection = state.selectedSectionIndex === null ? null : state.selectedSectionIndex === fromIndex ? toIndex : state.selectedSectionIndex;
 
             return {
                 ...state,
                 xml: {
                     ...state.xml,
                     storybook: {
-                        ...state.xml.storybook,
+                        ...sb,
                         section: reordered,
                     },
                 },
-                selectedSectionIndex: state.selectedSectionIndex === fromIndex ? toIndex : state.selectedSectionIndex,
+                selectedSectionIndex: nextSelectedSection,
                 dirty: true,
             };
         }
@@ -278,23 +406,34 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
             const { sectionIndex, fromIndex, toIndex } = action.payload;
             if (fromIndex === toIndex) return state;
 
-            const sections = [...state.xml.storybook.section];
-            const section = { ...sections[sectionIndex] };
-            const pages = [...section.page];
+            const sb = state.xml.storybook;
+            const raw = sb.section as any;
+            const sections = Array.isArray(raw) ? raw : raw ? [raw] : [];
 
-            section.page = arrayMove(pages, fromIndex, toIndex);
-            sections[sectionIndex] = section;
+            if (sectionIndex < 0 || sectionIndex >= sections.length) return state;
+
+            const section = sections[sectionIndex];
+
+            const pages = Array.isArray(section.page) ? section.page : section.page ? [section.page] : [];
+
+            if (fromIndex < 0 || fromIndex >= pages.length || toIndex < 0 || toIndex >= pages.length) return state;
+
+            const nextPages = arrayMove(pages, fromIndex, toIndex);
+            const nextSection = { ...section, page: nextPages };
+            const nextSections = sections.map((s, i) => (i === sectionIndex ? nextSection : s));
+
+            const nextSelectedPage = state.selectedPageIndex === null ? null : state.selectedPageIndex === fromIndex ? toIndex : state.selectedPageIndex;
 
             return {
                 ...state,
                 xml: {
                     ...state.xml,
                     storybook: {
-                        ...state.xml.storybook,
-                        section: sections,
+                        ...sb,
+                        section: nextSections,
                     },
                 },
-                selectedPageIndex: state.selectedPageIndex === fromIndex ? toIndex : state.selectedPageIndex,
+                selectedPageIndex: nextSelectedPage,
                 dirty: true,
             };
         }
@@ -304,34 +443,47 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
 
             const { fromSectionIndex, fromPageIndex, toSectionIndex, toPageIndex } = action.payload;
 
-            const sections = [...state.xml.storybook.section];
+            const sb = state.xml.storybook;
+            const raw = sb.section as any;
+            const sections = Array.isArray(raw) ? raw : raw ? [raw] : [];
 
-            const fromSection = { ...sections[fromSectionIndex] };
-            const toSection = { ...sections[toSectionIndex] };
+            if (fromSectionIndex < 0 || fromSectionIndex >= sections.length || toSectionIndex < 0 || toSectionIndex >= sections.length) return state;
 
-            const fromPages = [...fromSection.page];
-            const toPages = [...toSection.page];
+            const fromSection = sections[fromSectionIndex];
+            const toSection = sections[toSectionIndex];
 
-            const [movedPage] = fromPages.splice(fromPageIndex, 1);
-            toPages.splice(toPageIndex, 0, movedPage);
+            const fromPages = Array.isArray(fromSection.page) ? fromSection.page : fromSection.page ? [fromSection.page] : [];
 
-            fromSection.page = fromPages;
-            toSection.page = toPages;
+            const toPages = Array.isArray(toSection.page) ? toSection.page : toSection.page ? [toSection.page] : [];
 
-            sections[fromSectionIndex] = fromSection;
-            sections[toSectionIndex] = toSection;
+            if (fromPageIndex < 0 || fromPageIndex >= fromPages.length) return state;
+
+            // Clamp insertion index (so dropping past end inserts at end)
+            const safeToIndex = Math.max(0, Math.min(toPageIndex, toPages.length));
+
+            const movedPage = fromPages[fromPageIndex];
+
+            // Build next arrays immutably
+            const nextFromPages = fromPages.filter((_: any, i: number) => i !== fromPageIndex);
+            const nextToPages = [...toPages.slice(0, safeToIndex), movedPage, ...toPages.slice(safeToIndex)];
+
+            const nextSections = sections.map((s, i) => {
+                if (i === fromSectionIndex) return { ...fromSection, page: nextFromPages };
+                if (i === toSectionIndex) return { ...toSection, page: nextToPages };
+                return s;
+            });
 
             return {
                 ...state,
                 xml: {
                     ...state.xml,
                     storybook: {
-                        ...state.xml.storybook,
-                        section: sections,
+                        ...sb,
+                        section: nextSections,
                     },
                 },
                 selectedSectionIndex: toSectionIndex,
-                selectedPageIndex: toPageIndex,
+                selectedPageIndex: safeToIndex,
                 dirty: true,
             };
         }
