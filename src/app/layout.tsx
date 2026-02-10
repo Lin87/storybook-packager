@@ -28,7 +28,7 @@ export default function RootLayout({
 }>) {
     return (
         <html lang="en">
-            <body className={`${poppins.variable} ${dmMono.variable} antialiased border-t border-base-300`}>
+            <body className={`${poppins.variable} ${dmMono.variable} antialiased border-t border-base-300 overflow-hidden`}>
                 <div className="toast toast-center toast-bottom z-50" id="global-toast"></div>
                 {children}
             </body>

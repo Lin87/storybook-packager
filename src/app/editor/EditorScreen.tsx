@@ -57,7 +57,7 @@ export default function EditorScreen() {
     }
 
     return (
-        <div className='flex h-full w-full'>
+        <div className='flex h-screen w-screen overflow-hidden'>
             <Sidebar ref={sidebarRef} />
             <MainEditor sidebarRef={sidebarRef}  />
         </div>

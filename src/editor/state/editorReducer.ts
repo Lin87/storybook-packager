@@ -160,6 +160,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
             };
 
             const nextSections = [...currentSections, newSection];
+            const newSectionIndex = nextSections.length - 1;
 
             return {
                 ...state,
@@ -170,6 +171,8 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
                         section: nextSections, // always array going forward
                     },
                 },
+                selectedSectionIndex: newSectionIndex,
+                selectedPageIndex: null,
                 dirty: true,
             };
         }

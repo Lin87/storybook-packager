@@ -1,7 +1,7 @@
 'use client';
 
 import clsx from 'clsx';
-import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+import { forwardRef, useImperativeHandle, useRef, useState, useEffect } from 'react';
 import type { ReactNode, CSSProperties } from 'react';
 
 import ConfirmDialog from '@/app/components/ConfirmDialog';
@@ -30,7 +30,15 @@ export interface SidebarHandle {
    Sortable Item Wrapper
 ========================================================= */
 
-function SortableItem({ id, data, children }: { id: string; data: any; children: (args: { setNodeRef: (el: HTMLElement | null) => void; style: CSSProperties; attributes: any; listeners: any; isDragging: boolean }) => ReactNode }) {
+type SortableRenderArgs = {
+    setNodeRef: (el: HTMLElement | null) => void;
+    style: CSSProperties;
+    attributes: any;
+    listeners: any;
+    isDragging: boolean;
+};
+
+function SortableItem({ id, data, children }: { id: string; data: any; children: (args: SortableRenderArgs) => ReactNode }) {
     const { setNodeRef, transform, transition, attributes, listeners, isDragging } = useSortable({
         id,
         data,
@@ -40,29 +48,21 @@ function SortableItem({ id, data, children }: { id: string; data: any; children:
     const style: CSSProperties = {
         transform: CSS.Transform.toString(transform),
         transition,
-        opacity: isDragging ? 0 : 1,
+        opacity: isDragging ? 0 : 1, // hide in-list placeholder while using DragOverlay
     };
 
-    return children({
-        setNodeRef,
-        style,
-        attributes,
-        listeners,
-        isDragging,
-    });
+    return children({ setNodeRef, style, attributes, listeners, isDragging });
 }
 
 /* =========================================================
    Section Drop Zone
+   (enables dropping a page into a section header area)
 ========================================================= */
 
 function SectionPageDropZone({ sectionIndex, children }: { sectionIndex: number; children: ReactNode }) {
     const { setNodeRef } = useDroppable({
         id: `section-drop-${sectionIndex}`,
-        data: {
-            type: 'section-drop',
-            sectionIndex,
-        },
+        data: { type: 'section-drop', sectionIndex },
     });
 
     return <div ref={setNodeRef}>{children}</div>;
@@ -77,7 +77,12 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
     const xml = state.xml;
 
     const scrollRef = useRef<HTMLDivElement>(null);
+    const sectionRefs = useRef<Record<number, HTMLDivElement | null>>({});
     const pageRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+    const [collapsedSections, setCollapsedSections] = useState<Record<number, boolean>>({});
+    const [sectionToDelete, setSectionToDelete] = useState<{ index: number } | null>(null);
+    const [pageToDelete, setPageToDelete] = useState<{ section: number; page: number } | null>(null);
 
     if (!xml) {
         return <div className='w-64 bg-base-200 p-4 text-sm text-gray-400'>Loading…</div>;
@@ -85,33 +90,77 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
 
     const sections = Array.isArray(xml.storybook.section) ? xml.storybook.section : [xml.storybook.section];
 
-    const [collapsedSections, setCollapsedSections] = useState<Record<number, boolean>>({});
-    const [sectionToDelete, setSectionToDelete] = useState<{ index: number } | null>(null);
-    const [pageToDelete, setPageToDelete] = useState<{ section: number; page: number } | null>(null);
-
     const isSetupSelected = state.selectedSectionIndex === null && state.selectedPageIndex === null;
 
-    const { activeDragItem, pageDropIndicator, handleDragStart, handleDragOver, handleDragEnd, clearIndicator } = useSidebarDnD({
+    const { activeDragItem, pageDropIndicator, handleDragStart, handleDragOver, handleDragEnd, handleDragCancel } = useSidebarDnD({
         sections,
         collapsedSections,
         setCollapsedSections,
         dispatch,
     });
 
+    /* -----------------------------
+       Selection helpers
+    ------------------------------ */
+
+    const selectSetup = () => {
+        dispatch({
+            type: 'selectSection',
+            payload: { sectionIndex: null as never },
+        });
+    };
+
+    const selectSection = (sectionIndex: number) => {
+        dispatch({
+            type: 'selectSection',
+            payload: { sectionIndex },
+        });
+    };
+
+    const selectPage = (sectionIndex: number, pageIndex: number) => {
+        dispatch({
+            type: 'selectPage',
+            payload: { sectionIndex, pageIndex },
+        });
+    };
+
+    /* -----------------------------
+       UI helpers
+    ------------------------------ */
+
+    const toggleSectionCollapsed = (sectionIndex: number) => {
+        setCollapsedSections((prev) => ({
+            ...prev,
+            [sectionIndex]: !prev[sectionIndex],
+        }));
+    };
+
+    const addPageToSection = (sectionIndex: number) => {
+        dispatch({
+            type: 'addPage',
+            payload: { sectionIndex, pageType: 'image' },
+        });
+    };
+
+    /* -----------------------------
+       revealPage API (imperative)
+       Used by SectionEditor "Go" button
+    ------------------------------ */
+
     useImperativeHandle(ref, () => ({
         revealPage(sectionIndex, pageIndex) {
-            setCollapsedSections((prev) => ({
-                ...prev,
-                [sectionIndex]: false,
-            }));
+            // Ensure the target section is visible before trying to scroll to the page
+            setCollapsedSections((prev) => ({ ...prev, [sectionIndex]: false }));
 
             requestAnimationFrame(() => {
                 const scrollEl = scrollRef.current;
                 const pageEl = pageRefs.current[`${sectionIndex}-${pageIndex}`];
                 if (!scrollEl || !pageEl) return;
 
+                // Center the page row in the scroll container when possible
                 const containerTop = scrollEl.getBoundingClientRect().top;
                 const containerHeight = scrollEl.clientHeight;
+
                 const pageTop = pageEl.getBoundingClientRect().top;
                 const pageHeight = pageEl.clientHeight;
 
@@ -125,125 +174,133 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
         },
     }));
 
+    useEffect(() => {
+        const sIndex = state.selectedSectionIndex;
+        if (sIndex === null) return;
+
+        // Auto-expand selected section (covers newly added section too)
+        setCollapsedSections((prev) => {
+            if (prev[sIndex] === false || prev[sIndex] == null) return prev;
+            return { ...prev, [sIndex]: false };
+        });
+
+        // Scroll selected section into view (centered if possible)
+        requestAnimationFrame(() => {
+            const scrollEl = scrollRef.current;
+            const sectionEl = sectionRefs.current[sIndex];
+            if (!scrollEl || !sectionEl) return;
+
+            const containerRect = scrollEl.getBoundingClientRect();
+            const itemRect = sectionEl.getBoundingClientRect();
+
+            const itemTop = itemRect.top - containerRect.top;
+            const itemBottom = itemRect.bottom - containerRect.top;
+
+            // Only scroll if out of view
+            if (itemTop >= 0 && itemBottom <= scrollEl.clientHeight) return;
+
+            const targetOffset = itemTop - scrollEl.clientHeight / 2 + itemRect.height / 2;
+
+            scrollEl.scrollTo({
+                top: scrollEl.scrollTop + targetOffset,
+                behavior: 'smooth',
+            });
+        });
+    }, [state.selectedSectionIndex, setCollapsedSections]);
+
+    /* -----------------------------
+       Render helpers
+    ------------------------------ */
+
+    const renderPageRow = (sIndex: number, pIndex: number) => {
+        const isPageSelected = state.selectedSectionIndex === sIndex && state.selectedPageIndex === pIndex;
+
+        return (
+            <div key={pIndex}>
+                {pageDropIndicator && pageDropIndicator.sectionIndex === sIndex && pageDropIndicator.pageIndex === pIndex && <div className='my-1 h-0.5 bg-primary rounded-full opacity-70' />}
+
+                <SortableItem
+                    id={`page-${sIndex}-${pIndex}`}
+                    data={{
+                        type: 'page',
+                        sectionIndex: sIndex,
+                        pageIndex: pIndex,
+                    }}>
+                    {({ setNodeRef, style, attributes, listeners }) => (
+                        <div
+                            ref={(el) => {
+                                setNodeRef(el);
+                                pageRefs.current[`${sIndex}-${pIndex}`] = el;
+                            }}
+                            style={style}
+                            className={clsx('flex items-center min-h-10 text-sm cursor-pointer  ')}
+                            onClick={() => selectPage(sIndex, pIndex)}>
+                            <DragHandle attributes={attributes} listeners={listeners} />
+
+                            <div className={clsx('flex-1 px-3 py-1 mr-1 rounded hover:bg-blue-600 hover:text-white select-none', isPageSelected && 'bg-blue-600 text-white')}>{getPageTitle(xml, sIndex, pIndex)}</div>
+
+                            <DeleteButton onClick={() => setPageToDelete({ section: sIndex, page: pIndex })} />
+                        </div>
+                    )}
+                </SortableItem>
+            </div>
+        );
+    };
+
     return (
-        <div className='w-84 xl:w-94 bg-base-200 border-r border-base-300 h-full flex flex-col'>
-            {/* TOP */}
+        <div className='w-84 xl:w-94 bg-base-200 border-r border-base-300 h-full flex flex-col overflow-hidden'>
+            {/* Top (fixed) */}
             <div className='flex bg-base-100 border-b border-base-300 p-2 justify-end'>
-                <button
-                    className={clsx('btn btn-xs btn-soft', isSetupSelected && 'btn-active')}
-                    onClick={() =>
-                        dispatch({
-                            type: 'selectSection',
-                            payload: { sectionIndex: null as never },
-                        })
-                    }>
+                <button type='button' className={clsx('btn btn-xs btn-soft', isSetupSelected && 'btn-active')} onClick={selectSetup}>
                     <Gear size={16} />
                 </button>
             </div>
 
-            {/* SCROLLABLE */}
-            <div ref={scrollRef} className='flex-1 overflow-y-auto p-2'>
-                <DndContext collisionDetection={closestCenter} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd} onDragCancel={clearIndicator}>
+            {/* Middle (scrollable) */}
+            <div ref={scrollRef} className='flex-1 overflow-y-auto p-2 overscroll-contain'>
+                <DndContext collisionDetection={closestCenter} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
                     <SortableContext items={sections.map((_, i) => `section-${i}`)} strategy={verticalListSortingStrategy}>
                         {sections.map((section, sIndex) => {
                             const pages = Array.isArray(section.page) ? section.page : section.page ? [section.page] : [];
                             const isSectionSelected = state.selectedSectionIndex === sIndex && state.selectedPageIndex === null;
+                            const isCollapsed = !!collapsedSections[sIndex];
 
                             return (
                                 <SortableItem key={sIndex} id={`section-${sIndex}`} data={{ type: 'section', sectionIndex: sIndex }}>
                                     {({ setNodeRef, style, attributes, listeners }) => (
-                                        <div ref={setNodeRef} style={style} className='mb-2'>
-                                            {/* SECTION HEADER */}
-                                            <div className='flex items-center gap-1'>
+                                        <div
+                                            ref={(el) => {
+                                                setNodeRef(el);
+                                                sectionRefs.current[sIndex] = el;
+                                            }}
+                                            style={style}
+                                            className='mb-2'>
+                                            {/* Section header */}
+                                            <div className='flex items-center'>
                                                 <DragHandle attributes={attributes} listeners={listeners} />
 
-                                                <button
-                                                    className='btn btn-xs btn-ghost'
-                                                    onClick={() =>
-                                                        setCollapsedSections((p) => ({
-                                                            ...p,
-                                                            [sIndex]: !p[sIndex],
-                                                        }))
-                                                    }>
-                                                    {collapsedSections[sIndex] ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
+                                                <button type='button' className='btn btn-xs btn-ghost px-1' onClick={() => toggleSectionCollapsed(sIndex)}>
+                                                    {isCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
                                                 </button>
 
-                                                <div
-                                                    className={clsx('flex-1 px-2 py-1 cursor-pointer rounded hover:bg-base-300', isSectionSelected && 'bg-base-300 font-semibold')}
-                                                    onClick={() =>
-                                                        dispatch({
-                                                            type: 'selectSection',
-                                                            payload: { sectionIndex: sIndex },
-                                                        })
-                                                    }>
+                                                <div className={clsx('flex items-center flex-1 px-2 py-1 mr-1 min-h-10 cursor-pointer rounded hover:bg-blue-600 hover:text-white', isSectionSelected && 'bg-blue-600 text-white')} onClick={() => selectSection(sIndex)}>
                                                     {getSectionTitle(xml, sIndex)}
                                                 </div>
 
                                                 {sections.length > 1 && <DeleteButton onClick={() => setSectionToDelete({ index: sIndex })} />}
                                             </div>
 
-                                            {/* PAGES */}
+                                            {/* Pages (only when expanded) */}
                                             <SectionPageDropZone sectionIndex={sIndex}>
-                                                {!collapsedSections[sIndex] && (
-                                                    <div className='ml-8 mt-1'>
+                                                {!isCollapsed && (
+                                                    <div className='ml-5.5 mt-1'>
                                                         <SortableContext items={pages.map((_, i) => `page-${sIndex}-${i}`)} strategy={verticalListSortingStrategy}>
-                                                            {pages.map((page, pIndex) => {
-                                                                const isPageSelected = state.selectedSectionIndex === sIndex && state.selectedPageIndex === pIndex;
-                                                                
-                                                                return (
-                                                                    <div key={pIndex}>
-                                                                        {pageDropIndicator && pageDropIndicator.sectionIndex === sIndex && pageDropIndicator.pageIndex === pIndex && <div className='my-1 h-0.5 bg-primary rounded-full opacity-70' />}
-
-                                                                        <SortableItem
-                                                                            id={`page-${sIndex}-${pIndex}`}
-                                                                            data={{
-                                                                                type: 'page',
-                                                                                sectionIndex: sIndex,
-                                                                                pageIndex: pIndex,
-                                                                            }}>
-                                                                            {({ setNodeRef, style, attributes, listeners }) => (
-                                                                                <div
-                                                                                    ref={(el) => {
-                                                                                        setNodeRef(el);
-                                                                                        pageRefs.current[`${sIndex}-${pIndex}`] = el;
-                                                                                    }}
-                                                                                    style={style}
-                                                                                    className={clsx('flex items-center text-sm cursor-pointer rounded hover:bg-base-300', isPageSelected && 'bg-base-300 font-semibold')}
-                                                                                    onClick={() =>
-                                                                                        dispatch({
-                                                                                            type: 'selectPage',
-                                                                                            payload: {
-                                                                                                sectionIndex: sIndex,
-                                                                                                pageIndex: pIndex,
-                                                                                            },
-                                                                                        })
-                                                                                    }>
-                                                                                    <DragHandle attributes={attributes} listeners={listeners} />
-
-                                                                                    <span className='flex-1 px-3 py-1'>{getPageTitle(xml, sIndex, pIndex)}</span>
-
-                                                                                    <DeleteButton onClick={() => setPageToDelete({ section: sIndex, page: pIndex })} />
-                                                                                </div>
-                                                                            )}
-                                                                        </SortableItem>
-                                                                    </div>
-                                                                );
-                                                            })}
+                                                            {pages.map((_, pIndex) => renderPageRow(sIndex, pIndex))}
 
                                                             {pages.length === 0 && pageDropIndicator?.sectionIndex === sIndex && <div className='my-2 h-0.5 bg-primary rounded-full opacity-70' />}
                                                         </SortableContext>
-                                                        <button
-                                                            type='button'
-                                                            className='btn btn-sm btn-soft btn-primary btn-wide mt-2'
-                                                            onClick={() =>
-                                                                dispatch({
-                                                                    type: 'addPage',
-                                                                    payload: {
-                                                                        sectionIndex: sIndex,
-                                                                        pageType: 'image',
-                                                                    },
-                                                                })
-                                                            }>
+
+                                                        <button type='button' className='btn btn-sm btn-soft mt-2 w-full' onClick={() => addPageToSection(sIndex)}>
                                                             + Add Page
                                                         </button>
                                                     </div>
@@ -256,21 +313,23 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
                         })}
                     </SortableContext>
 
-                    <DragOverlay adjustScale={false} dropAnimation={{ duration: 0, easing: 'linear' }}>
+                    {/* Drag preview (overlay). Disable drop animation to avoid snap-back feel. */}
+                    <DragOverlay adjustScale={false} dropAnimation={null}>
                         {activeDragItem?.type === 'section' && <div className='px-3 py-2 bg-base-300 rounded shadow text-sm'>{getSectionTitle(xml, activeDragItem.sectionIndex)}</div>}
+
                         {activeDragItem?.type === 'page' && <div className='px-3 py-1 bg-base-300 rounded shadow text-sm'>{getPageTitle(xml, activeDragItem.sectionIndex, activeDragItem.pageIndex)}</div>}
                     </DragOverlay>
                 </DndContext>
             </div>
 
-            {/* BOTTOM */}
+            {/* Bottom (fixed) */}
             <div className='p-2 bg-base-100 border-t border-base-300'>
                 <button type='button' className='btn btn-primary w-full' onClick={() => dispatch({ type: 'addSection' })}>
                     + Add Section
                 </button>
             </div>
 
-            {/* MODALS */}
+            {/* Modals */}
             <ConfirmDialog
                 open={sectionToDelete !== null}
                 title='Delete Section'

@@ -15,9 +15,7 @@ export default function MainEditor({ sidebarRef }: MainEditorProps) {
     const { state } = useEditor();
 
     const isSetupSelected = state.selectedSectionIndex === null && state.selectedPageIndex === null;
-
     const sectionSelected = state.selectedSectionIndex !== null && state.selectedPageIndex === null;
-
     const pageSelected = state.selectedSectionIndex !== null && state.selectedPageIndex !== null;
 
     return (
