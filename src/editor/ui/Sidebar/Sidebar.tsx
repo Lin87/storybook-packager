@@ -11,7 +11,7 @@ import { useEditor } from '@/editor/state/EditorContext';
 
 import { ChevronDown, ChevronRight, Gear } from 'react-bootstrap-icons';
 
-import { DndContext, closestCenter, DragOverlay } from '@dnd-kit/core';
+import { DndContext, closestCenter, DragOverlay, useDroppable } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
@@ -56,8 +56,6 @@ function SortableItem({ id, data, children }: { id: string; data: any; children:
    Section Drop Zone
 ========================================================= */
 
-import { useDroppable } from '@dnd-kit/core';
-
 function SectionPageDropZone({ sectionIndex, children }: { sectionIndex: number; children: ReactNode }) {
     const { setNodeRef } = useDroppable({
         id: `section-drop-${sectionIndex}`,
@@ -77,6 +75,7 @@ function SectionPageDropZone({ sectionIndex, children }: { sectionIndex: number;
 const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
     const { state, dispatch } = useEditor();
     const xml = state.xml;
+
     const scrollRef = useRef<HTMLDivElement>(null);
     const pageRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -85,14 +84,12 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
     }
 
     const sections = Array.isArray(xml.storybook.section) ? xml.storybook.section : [xml.storybook.section];
+
     const [collapsedSections, setCollapsedSections] = useState<Record<number, boolean>>({});
     const [sectionToDelete, setSectionToDelete] = useState<{ index: number } | null>(null);
     const [pageToDelete, setPageToDelete] = useState<{ section: number; page: number } | null>(null);
-    const isSetupSelected = state.selectedSectionIndex === null && state.selectedPageIndex === null;
 
-    /* =====================================================
-       Drag & Drop (extracted)
-    ===================================================== */
+    const isSetupSelected = state.selectedSectionIndex === null && state.selectedPageIndex === null;
 
     const { activeDragItem, pageDropIndicator, handleDragStart, handleDragOver, handleDragEnd, clearIndicator } = useSidebarDnD({
         sections,
@@ -100,10 +97,6 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
         setCollapsedSections,
         dispatch,
     });
-
-    /* =====================================================
-       revealPage API
-    ===================================================== */
 
     useImperativeHandle(ref, () => ({
         revealPage(sectionIndex, pageIndex) {
@@ -132,10 +125,6 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
         },
     }));
 
-    /* =====================================================
-       Render
-    ===================================================== */
-
     return (
         <div className='w-84 xl:w-94 bg-base-200 border-r border-base-300 h-full flex flex-col'>
             {/* TOP */}
@@ -158,6 +147,7 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
                     <SortableContext items={sections.map((_, i) => `section-${i}`)} strategy={verticalListSortingStrategy}>
                         {sections.map((section, sIndex) => {
                             const pages = Array.isArray(section.page) ? section.page : section.page ? [section.page] : [];
+                            const isSectionSelected = state.selectedSectionIndex === sIndex && state.selectedPageIndex === null;
 
                             return (
                                 <SortableItem key={sIndex} id={`section-${sIndex}`} data={{ type: 'section', sectionIndex: sIndex }}>
@@ -179,7 +169,7 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
                                                 </button>
 
                                                 <div
-                                                    className='flex-1 px-2 py-1 cursor-pointer rounded hover:bg-base-300'
+                                                    className={clsx('flex-1 px-2 py-1 cursor-pointer rounded hover:bg-base-300', isSectionSelected && 'bg-base-300 font-semibold')}
                                                     onClick={() =>
                                                         dispatch({
                                                             type: 'selectSection',
@@ -197,46 +187,65 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
                                                 {!collapsedSections[sIndex] && (
                                                     <div className='ml-8 mt-1'>
                                                         <SortableContext items={pages.map((_, i) => `page-${sIndex}-${i}`)} strategy={verticalListSortingStrategy}>
-                                                            {pages.map((page, pIndex) => (
-                                                                <div key={pIndex}>
-                                                                    {pageDropIndicator && pageDropIndicator.sectionIndex === sIndex && pageDropIndicator.pageIndex === pIndex && <div className='my-1 h-0.5 bg-primary rounded-full opacity-70' />}
+                                                            {pages.map((page, pIndex) => {
+                                                                const isPageSelected = state.selectedSectionIndex === sIndex && state.selectedPageIndex === pIndex;
+                                                                
+                                                                return (
+                                                                    <div key={pIndex}>
+                                                                        {pageDropIndicator && pageDropIndicator.sectionIndex === sIndex && pageDropIndicator.pageIndex === pIndex && <div className='my-1 h-0.5 bg-primary rounded-full opacity-70' />}
 
-                                                                    <SortableItem
-                                                                        id={`page-${sIndex}-${pIndex}`}
-                                                                        data={{
-                                                                            type: 'page',
-                                                                            sectionIndex: sIndex,
-                                                                            pageIndex: pIndex,
-                                                                        }}>
-                                                                        {({ setNodeRef, style, attributes, listeners }) => (
-                                                                            <div
-                                                                                ref={(el) => {
-                                                                                    setNodeRef(el);
-                                                                                    pageRefs.current[`${sIndex}-${pIndex}`] = el;
-                                                                                }}
-                                                                                style={style}
-                                                                                className='flex items-center text-sm rounded hover:bg-base-300'
-                                                                                onClick={() =>
-                                                                                    dispatch({
-                                                                                        type: 'selectPage',
-                                                                                        payload: {
-                                                                                            sectionIndex: sIndex,
-                                                                                            pageIndex: pIndex,
-                                                                                        },
-                                                                                    })
-                                                                                }>
-                                                                                <DragHandle attributes={attributes} listeners={listeners} />
+                                                                        <SortableItem
+                                                                            id={`page-${sIndex}-${pIndex}`}
+                                                                            data={{
+                                                                                type: 'page',
+                                                                                sectionIndex: sIndex,
+                                                                                pageIndex: pIndex,
+                                                                            }}>
+                                                                            {({ setNodeRef, style, attributes, listeners }) => (
+                                                                                <div
+                                                                                    ref={(el) => {
+                                                                                        setNodeRef(el);
+                                                                                        pageRefs.current[`${sIndex}-${pIndex}`] = el;
+                                                                                    }}
+                                                                                    style={style}
+                                                                                    className={clsx('flex items-center text-sm cursor-pointer rounded hover:bg-base-300', isPageSelected && 'bg-base-300 font-semibold')}
+                                                                                    onClick={() =>
+                                                                                        dispatch({
+                                                                                            type: 'selectPage',
+                                                                                            payload: {
+                                                                                                sectionIndex: sIndex,
+                                                                                                pageIndex: pIndex,
+                                                                                            },
+                                                                                        })
+                                                                                    }>
+                                                                                    <DragHandle attributes={attributes} listeners={listeners} />
 
-                                                                                <span className='flex-1 px-3 py-1'>{getPageTitle(xml, sIndex, pIndex)}</span>
-                                                                                <DeleteButton onClick={() => setPageToDelete({section: sIndex, page: pIndex})} />
-                                                                            </div>
-                                                                        )}
-                                                                    </SortableItem>
-                                                                </div>
-                                                            ))}
+                                                                                    <span className='flex-1 px-3 py-1'>{getPageTitle(xml, sIndex, pIndex)}</span>
+
+                                                                                    <DeleteButton onClick={() => setPageToDelete({ section: sIndex, page: pIndex })} />
+                                                                                </div>
+                                                                            )}
+                                                                        </SortableItem>
+                                                                    </div>
+                                                                );
+                                                            })}
 
                                                             {pages.length === 0 && pageDropIndicator?.sectionIndex === sIndex && <div className='my-2 h-0.5 bg-primary rounded-full opacity-70' />}
                                                         </SortableContext>
+                                                        <button
+                                                            type='button'
+                                                            className='btn btn-sm btn-soft btn-primary btn-wide mt-2'
+                                                            onClick={() =>
+                                                                dispatch({
+                                                                    type: 'addPage',
+                                                                    payload: {
+                                                                        sectionIndex: sIndex,
+                                                                        pageType: 'image',
+                                                                    },
+                                                                })
+                                                            }>
+                                                            + Add Page
+                                                        </button>
                                                     </div>
                                                 )}
                                             </SectionPageDropZone>
@@ -247,7 +256,7 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
                         })}
                     </SortableContext>
 
-                    <DragOverlay adjustScale={false} dropAnimation={{duration: 0, easing: 'linear'}}>
+                    <DragOverlay adjustScale={false} dropAnimation={{ duration: 0, easing: 'linear' }}>
                         {activeDragItem?.type === 'section' && <div className='px-3 py-2 bg-base-300 rounded shadow text-sm'>{getSectionTitle(xml, activeDragItem.sectionIndex)}</div>}
                         {activeDragItem?.type === 'page' && <div className='px-3 py-1 bg-base-300 rounded shadow text-sm'>{getPageTitle(xml, activeDragItem.sectionIndex, activeDragItem.pageIndex)}</div>}
                     </DragOverlay>

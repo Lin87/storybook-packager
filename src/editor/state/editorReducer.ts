@@ -269,12 +269,11 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
                 $: { type: pageType, title: 'New Page' },
             };
 
-            const nextSection = {
-                ...section,
-                page: [...pages, newPage],
-            };
-
+            const nextPages = [...pages, newPage];
+            const nextSection = { ...section, page: nextPages };
             const nextSections = sections.map((s, i) => (i === sectionIndex ? nextSection : s));
+
+            const newPageIndex = nextPages.length - 1;
 
             return {
                 ...state,
@@ -285,6 +284,8 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
                         section: nextSections,
                     },
                 },
+                selectedSectionIndex: sectionIndex,
+                selectedPageIndex: newPageIndex,
                 dirty: true,
             };
         }
