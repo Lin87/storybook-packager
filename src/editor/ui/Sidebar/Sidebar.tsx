@@ -251,7 +251,7 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
     return (
         <div className='w-84 xl:w-94 bg-base-200 border-r border-base-300 h-full flex flex-col'>
             {/* Top (fixed) */}
-            <div className='flex bg-base-100 border-b border-base-300 p-2 justify-end'>
+            <div className='flex bg-base-100 border-b border-base-300 p-2 justify-end preview'>
                 <button type='button' className={clsx('btn btn-xs btn-soft', isSetupSelected && 'btn-active')} onClick={selectSetup}>
                     <Gear size={16} />
                 </button>
@@ -324,7 +324,7 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
             </div>
 
             {/* Bottom (fixed) */}
-            <div className='p-2 bg-base-100 border-t border-base-300'>
+            <div className='p-2 bg-base-100 border-t border-base-300 preview'>
                 <button type='button' className='btn btn-primary w-full' onClick={() => dispatch({ type: 'addSection' })}>
                     + Add Section
                 </button>

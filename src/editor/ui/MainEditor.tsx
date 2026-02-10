@@ -1,5 +1,6 @@
 'use client';
 
+import clsx from 'clsx';
 import type { RefObject } from 'react';
 import { useEditor } from '@/editor/state/EditorContext';
 import SetupEditor from './SetupEditor';
@@ -19,7 +20,7 @@ export default function MainEditor({ sidebarRef }: MainEditorProps) {
     const pageSelected = state.selectedSectionIndex !== null && state.selectedPageIndex !== null;
 
     return (
-        <div className='flex-1 p-5 overflow-auto'>
+        <div className={clsx('flex-1 p-5 overflow-auto', isSetupSelected && 'preview')}>
             {isSetupSelected && <SetupEditor />}
             {sectionSelected && <SectionEditor sidebarRef={sidebarRef} />}
             {pageSelected && <PageEditor />}
