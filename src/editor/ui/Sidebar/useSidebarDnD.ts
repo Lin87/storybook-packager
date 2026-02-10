@@ -1,24 +1,8 @@
 import { useRef, useState } from 'react';
 import type { DragOverEvent, DragEndEvent, DragStartEvent, DragCancelEvent } from '@dnd-kit/core';
 
-function lockBodyScroll() {
-    const body = document.body;
-    // store previous inline styles so we can restore exactly
-    const prevOverflow = body.style.overflow;
-    const prevTouchAction = body.style.touchAction;
-
-    body.style.overflow = 'hidden';
-    body.style.touchAction = 'none';
-
-    return () => {
-        body.style.overflow = prevOverflow;
-        body.style.touchAction = prevTouchAction;
-    };
-}
-
 export function useSidebarDnD({ sections, collapsedSections, setCollapsedSections, dispatch }: { sections: any[]; collapsedSections: Record<number, boolean>; setCollapsedSections: React.Dispatch<React.SetStateAction<Record<number, boolean>>>; dispatch: Function }) {
     const expandTimeout = useRef<number | null>(null);
-    const unlockRef = useRef<null | (() => void)>(null);
     const [pageDropIndicator, setPageDropIndicator] = useState<{
         sectionIndex: number;
         pageIndex: number;
@@ -26,15 +10,12 @@ export function useSidebarDnD({ sections, collapsedSections, setCollapsedSection
 
     const [activeDragItem, setActiveDragItem] = useState<any>(null);
 
-    function handleDragStart(event: any) {
+
+    function handleDragStart(event: DragStartEvent) {
         const active = event.active?.data?.current;
         if (!active) return;
 
         setActiveDragItem(active);
-
-        // lock window/page scrolling during drag
-        unlockRef.current?.();
-        unlockRef.current = lockBodyScroll();
 
         if (active.type === 'section') {
             setCollapsedSections(Object.fromEntries(sections.map((_, i) => [i, true])));
@@ -89,9 +70,6 @@ export function useSidebarDnD({ sections, collapsedSections, setCollapsedSection
     }
 
     function handleDragEnd(event: DragEndEvent) {
-        unlockRef.current?.();
-        unlockRef.current = null;
-
         const { active, over } = event;
         setPageDropIndicator(null);
         setActiveDragItem(null);
@@ -152,8 +130,6 @@ export function useSidebarDnD({ sections, collapsedSections, setCollapsedSection
     }
 
     function handleDragCancel(_: DragCancelEvent) {
-        unlockRef.current?.();
-        unlockRef.current = null;
         setPageDropIndicator(null);
         setActiveDragItem(null);
     }

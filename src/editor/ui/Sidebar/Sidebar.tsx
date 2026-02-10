@@ -248,7 +248,7 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
     };
 
     return (
-        <div className='w-84 xl:w-94 bg-base-200 border-r border-base-300 h-full flex flex-col overflow-hidden'>
+        <div className='w-84 xl:w-94 bg-base-200 border-r border-base-300 h-full flex flex-col'>
             {/* Top (fixed) */}
             <div className='flex bg-base-100 border-b border-base-300 p-2 justify-end'>
                 <button type='button' className={clsx('btn btn-xs btn-soft', isSetupSelected && 'btn-active')} onClick={selectSetup}>
@@ -257,8 +257,8 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
             </div>
 
             {/* Middle (scrollable) */}
-            <div ref={scrollRef} className='flex-1 overflow-y-auto p-2 overscroll-contain'>
-                <DndContext collisionDetection={closestCenter} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
+            <div ref={scrollRef} className='flex-1 overflow-y-auto p-2'>
+                <DndContext autoScroll={false} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
                     <SortableContext items={sections.map((_, i) => `section-${i}`)} strategy={verticalListSortingStrategy}>
                         {sections.map((section, sIndex) => {
                             const pages = Array.isArray(section.page) ? section.page : section.page ? [section.page] : [];
