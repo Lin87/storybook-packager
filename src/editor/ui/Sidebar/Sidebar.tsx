@@ -92,11 +92,12 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
 
     const isSetupSelected = state.selectedSectionIndex === null && state.selectedPageIndex === null;
 
-    const { activeDragItem, pageDropIndicator, handleDragStart, handleDragOver, handleDragEnd, handleDragCancel } = useSidebarDnD({
+    const { activeDragItem, pageDropIndicator, handleDragStart, handleDragMove, handleDragOver, handleDragEnd, handleDragCancel } = useSidebarDnD({
         sections,
         collapsedSections,
         setCollapsedSections,
         dispatch,
+        scrollContainerRef: scrollRef,
     });
 
     /* -----------------------------
@@ -257,8 +258,8 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
             </div>
 
             {/* Middle (scrollable) */}
-            <div ref={scrollRef} className='flex-1 overflow-y-auto p-2'>
-                <DndContext autoScroll={false} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
+            <div ref={scrollRef} className='flex-1 overflow-y-auto p-2 overscroll-contain'>
+                <DndContext autoScroll={false} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragMove={handleDragMove} onDragOver={handleDragOver} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
                     <SortableContext items={sections.map((_, i) => `section-${i}`)} strategy={verticalListSortingStrategy}>
                         {sections.map((section, sIndex) => {
                             const pages = Array.isArray(section.page) ? section.page : section.page ? [section.page] : [];
