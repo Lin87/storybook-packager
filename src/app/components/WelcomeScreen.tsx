@@ -7,6 +7,7 @@ import RecentFilesSection from "./RecentFilesSection";
 import AppTitleBar from "./AppTitleBar";
 import NewPresentationButton from "./NewPresentationButton";
 import OpenExistingButton from "./OpenExistingButton";
+import clsx from "clsx";
 
 export default function WelcomeScreen() {
 
@@ -23,7 +24,7 @@ export default function WelcomeScreen() {
         <>
             <div className="flex flex-col h-full">
                 {!isMac && <AppTitleBar />}
-                <div className="flex flex-1 justify-center bg-base-200 rounded-md p-8 pt-1 overflow-hidden">
+                <div className={clsx("flex flex-1 justify-center bg-base-200 rounded-md p-8 overflow-hidden", !isMac && "pt-1")}>
                     <div className="flex flex-col items-center justify-center flex-1 space-y-6 pr-8 select-none">
                         <img src="/icons/icon.png" alt="Storybook Packager" className="w-40 mb-4" />
                         <h1 className="text-3xl font-bold mb-6">Storybook Packager</h1>
