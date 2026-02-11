@@ -1,49 +1,47 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useEditor } from '@/editor/state/EditorContext';
+import { getPageEditorRegistration } from './pageEditors/registry';
 
-export default function PageEditor() {
-    const { state, dispatch } = useEditor();
+function asArray<T>(v: T | T[] | undefined): T[] {
+    if (!v) return [];
+    return Array.isArray(v) ? v : [v];
+}
 
-    const sIndex = state.selectedSectionIndex!;
-    const pIndex = state.selectedPageIndex!;
-    const section = Array.isArray(state.xml!.storybook.section) ? state.xml!.storybook.section[sIndex] : state.xml!.storybook.section;
-    const page = Array.isArray(section.page) ? section.page[pIndex] : section.page;
+export default function PageEditorHost() {
+    const { state } = useEditor();
 
-    const updatePageTitle = (value: string) => {
-        dispatch({
-            type: 'renamePage',
-            payload: { sectionIndex: sIndex, pageIndex: pIndex, title: value },
-        });
-    };
+    const sIndex = state.selectedSectionIndex;
+    const pIndex = state.selectedPageIndex;
+
+    if (!state.xml || sIndex === null || pIndex === null) return null;
+
+    const section = asArray(state.xml.storybook.section)[sIndex];
+    const page = asArray(section?.page)[pIndex];
+
+    if (!section || !page) {
+        return (
+            <div className='text-sm opacity-70'>
+                The selected page could not be found. (sectionIndex={sIndex}, pageIndex={pIndex})
+            </div>
+        );
+    }
+
+    const type = page.$?.type ?? 'unknown';
+    const registration = useMemo(() => getPageEditorRegistration(type), [type]);
+    const Editor = registration.Editor;
 
     return (
         <div className='space-y-4'>
-            <h2 className='text-xl font-semibold'>Page Editor</h2>
-
-            <div className='text-sm text-gray-600'>
-                <p>
-                    <strong>Page Type:</strong> {page.$?.type}
-                </p>
-                {page.$?.title && (
-                    <p>
-                        <strong>Title:</strong> {page.$?.title}
-                    </p>
-                )}
-                {page.$?.src && (
-                    <p>
-                        <strong>Source:</strong> {page.$?.src}
-                    </p>
-                )}
+            <div>
+                <h2 className='text-xl font-semibold'>{registration.label}</h2>
+                <div className='text-xs opacity-70'>
+                    Type: <span className='font-mono'>{type}</span>
+                </div>
             </div>
 
-            {/* Page Title */}
-            <div className='form-control mt-4 max-w-lg'>
-                <label className='label'>Page Title</label>
-                <input className='input input-bordered' value={page.$?.title ?? ''} onChange={(e) => updatePageTitle(e.target.value)} />
-            </div>
-
-            <p className='text-gray-400 text-xs'>(Page-type-specific editor coming in future steps)</p>
+            <Editor sectionIndex={sIndex} pageIndex={pIndex} />
         </div>
     );
 }
