@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, Menu } from 'electron';
 
 app.setName('storybook-packager');
 
@@ -25,6 +25,45 @@ let welcomeWindow: BrowserWindow | null = null;
 let staticServer: http.Server | null = null;
 let staticPort: number;
 let lastClosedWindow: 'editor' | 'welcome' | null = null;
+
+function buildAppMenu() {
+    const template: Electron.MenuItemConstructorOptions[] = [
+        {
+            label: 'File',
+            submenu: [
+                {
+                    label: 'Save',
+                    accelerator: 'CmdOrCtrl+S',
+                    click: async () => {
+                        const win = BrowserWindow.getFocusedWindow();
+                        if (!win) return;
+
+                        await dialog.showMessageBox(win, {
+                            type: 'info',
+                            message: 'Save is not implemented yet.',
+                        });
+                    },
+                },
+                { type: 'separator' },
+                process.platform === 'darwin' ? { role: 'close' } : { role: 'quit' },
+            ],
+        },
+
+        { role: 'editMenu' },
+        { role: 'viewMenu' },
+        { role: 'help' },
+    ];
+
+    // macOS app menu (required for proper behavior)
+    if (process.platform === 'darwin') {
+        template.unshift({
+            role: 'appMenu',
+        });
+    }
+
+    const menu = Menu.buildFromTemplate(template);
+    Menu.setApplicationMenu(menu);
+}
 
 async function startStaticServer(): Promise<number> {
     const staticPath = path.join(process.cwd(), 'out');
@@ -232,6 +271,7 @@ function createWelcomeWindow() {
 }
 
 app.whenReady().then(async () => {
+    buildAppMenu();
     registerIpcHandlers(); // IPCs must be ready before window launches
     if (!isDev) {
         staticPort = await startStaticServer(); // Only start Express server in prod mode
