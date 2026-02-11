@@ -1,4 +1,8 @@
+'use client';
+
 /* eslint-disable @next/next/no-img-element */
+
+import { useEffect, useState } from "react";
 import RecentFilesSection from "./RecentFilesSection";
 import AppTitleBar from "./AppTitleBar";
 import NewPresentationButton from "./NewPresentationButton";
@@ -7,11 +11,18 @@ import OpenExistingButton from "./OpenExistingButton";
 export default function WelcomeScreen() {
 
     const currentYear = new Date().getFullYear();
+    const [isMac, setIsMac] = useState(false);
+
+    useEffect(() => {
+        window.electronAPI.getPlatform().then(platform => {
+            setIsMac(platform === 'darwin');
+        });
+    }, []);
 
     return (
         <>
             <div className="flex flex-col h-full">
-                <AppTitleBar />
+                {!isMac && <AppTitleBar />}
                 <div className="flex flex-1 justify-center bg-base-200 rounded-md p-8 pt-1 overflow-hidden">
                     <div className="flex flex-col items-center justify-center flex-1 space-y-6 pr-8 select-none">
                         <img src="/icons/icon.png" alt="Storybook Packager" className="w-40 mb-4" />

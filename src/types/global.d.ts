@@ -5,6 +5,7 @@ import type { StorybookXml } from "./sbplus";
 declare global {
     interface Window {
         electronAPI: {
+            getPlatform: () => Promise<NodeJS.Platform>;
             setWindowTitle: (title: string, edited?: boolean) => void;
             createNewPresentation: () => Promise<string | { error: string } | null>;
             openExistingPresentation: () => Promise<string | { error: string } | null>;

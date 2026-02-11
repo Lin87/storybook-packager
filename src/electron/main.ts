@@ -161,6 +161,10 @@ async function startStaticServer(): Promise<number> {
 
 // Register IPC handlers here
 function registerIpcHandlers() {
+    ipcMain.handle('app:get-platform', () => {
+        return process.platform;
+    });
+
     ipcMain.on('window:set-title', (event, payload: { title: string; edited?: boolean }) => {
         const win = BrowserWindow.fromWebContents(event.sender);
         if (!win || win.isDestroyed()) return;

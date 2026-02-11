@@ -3,6 +3,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
+    getPlatform: () => ipcRenderer.invoke("app:get-platform"),
     setWindowTitle: (title, edited = false) => ipcRenderer.send("window:set-title", {title, edited}),
     createNewPresentation: () => ipcRenderer.invoke('create-new-presentation'),
     openExistingPresentation: () => ipcRenderer.invoke('open-existing-presentation'),
