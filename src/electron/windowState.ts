@@ -22,10 +22,14 @@ export function loadWelcomeWindowState(): { x?: number; y?: number } {
 }
 
 export function saveWelcomeWindowState(win: BrowserWindow) {
-    if (win.isDestroyed()) return;
-    const { x, y } = win.getBounds();
-    const welcomePath = getWelcomeStatePath();
-    fs.writeFileSync(welcomePath, JSON.stringify({ x, y }));
+    try {
+        if (win.isDestroyed()) return;
+        const { x, y } = win.getBounds();
+        const welcomePath = getWelcomeStatePath();
+        fs.writeFileSync(welcomePath, JSON.stringify({ x, y }));
+    } catch {
+        // Window may be tearing down during app quit
+    }
 }
 
 export function loadEditorWindowState(): {
@@ -54,12 +58,16 @@ export function loadEditorWindowState(): {
 }
 
 export function saveEditorWindowState(win: BrowserWindow) {
-    if (win.isDestroyed()) return;
+    try {
+        if (win.isDestroyed()) return;
 
-    const editorPath = getEditorStatePath();
-    const bounds = win.getBounds();
-    const isFull = win.isFullScreen();
-    const isMax = win.isMaximized();
+        const editorPath = getEditorStatePath();
+        const bounds = win.getBounds();
+        const isFull = win.isFullScreen();
+        const isMax = win.isMaximized();
 
-    fs.writeFileSync(editorPath, JSON.stringify({ ...bounds, fullscreen: isFull, maximized: isMax }));
+        fs.writeFileSync(editorPath, JSON.stringify({ ...bounds, fullscreen: isFull, maximized: isMax }));
+    } catch {
+        // Window may be tearing down during app quit
+    }
 }

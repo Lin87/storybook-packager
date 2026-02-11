@@ -5,7 +5,7 @@ import { useEditor } from '@/editor/state/EditorContext';
 export default function SetupEditor() {
     const { state, dispatch } = useEditor();
 
-    const setup = state.xml!.storybook.setup;
+    const setup = state.xml!.storybook.setup ?? ({} as any);
 
     const update = (field: string, value: string) => {
         dispatch({

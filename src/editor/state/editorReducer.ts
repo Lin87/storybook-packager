@@ -19,6 +19,7 @@ export const initialEditorState: EditorState = {
 
 export function editorReducer(state: EditorState, action: EditorAction): EditorState {
     switch (action.type) {
+
         case 'loadXml':
             return {
                 ...state,

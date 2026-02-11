@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { useEditor } from '@/editor/state/EditorContext';
 import MainEditor from '@/editor/ui/MainEditor';
 import Sidebar, { SidebarHandle } from '@/editor/ui/Sidebar/Sidebar';
+import { showToast } from '../utils/toast';
 
 export default function EditorScreen() {
     const searchParams = useSearchParams();
@@ -52,6 +53,41 @@ export default function EditorScreen() {
         };
     }, [pathParam, dispatch]);
 
+    useEffect(() => {
+        if (!state.xml) return;
+
+        const rawTitle = state.xml.storybook?.setup?.title;
+        const presentationTitle = (typeof rawTitle === 'string' ? rawTitle : rawTitle?.[0])?.trim() || '';
+
+        const name = presentationTitle || (state.presentationPath ? state.presentationPath.split(/[/\\]/).pop() : '') || 'Untitled';
+
+        // IMPORTANT: no '*' here — main process will add it on Windows/Linux only
+        const base = `${name} - Storybook Packager`;
+
+        window.electronAPI.setWindowTitle(base, state.dirty);
+    }, [state.xml, state.dirty, state.presentationPath]);
+
+    useEffect(() => {
+        const unsubscribe = window.electronAPI.onMenuFileSave(() => {
+            showToast('Save requested - not implemented yet', 'info');
+        });
+        return unsubscribe;
+    }, []);
+
+    useEffect(() => {
+        const unsubSaveAs = window.electronAPI.onMenuFileSaveAs(() => {
+            showToast('Save As... is not implemented yet.', 'info');
+        });
+
+        return () => {
+            unsubSaveAs();
+        };
+    }, []);
+
+    useEffect(() => {
+        window.electronAPI.setEditorDirty(state.dirty);
+    }, [state.dirty]);
+
     if (!state.xml) {
         return <p className='p-4'>Loading...</p>;
     }
@@ -59,7 +95,7 @@ export default function EditorScreen() {
     return (
         <div className='flex h-full w-full overflow-hidden'>
             <Sidebar ref={sidebarRef} />
-            <MainEditor sidebarRef={sidebarRef}  />
+            <MainEditor sidebarRef={sidebarRef} />
         </div>
     );
 }

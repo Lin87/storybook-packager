@@ -20,6 +20,7 @@ const isDev = !app.isPackaged && process.env.ELECTRON_START_URL;
 console.log(`Running in ${isDev ? 'development' : 'production'} mode.`);
 
 const recentFilePath: string = path.join(app.getPath('userData'), 'recent.json');
+const windowDirty = new Map<number, boolean>(); // track dirty state per window
 
 let welcomeWindow: BrowserWindow | null = null;
 let staticServer: http.Server | null = null;
@@ -27,6 +28,9 @@ let staticPort: number;
 let lastClosedWindow: 'editor' | 'welcome' | null = null;
 
 function buildAppMenu() {
+    const editorEnabled = isEditorFocused();
+    const editorDirty = isFocusedEditorDirty();
+
     const template: Electron.MenuItemConstructorOptions[] = [
         {
             label: 'File',
@@ -34,24 +38,73 @@ function buildAppMenu() {
                 {
                     label: 'Save',
                     accelerator: 'CmdOrCtrl+S',
-                    click: async () => {
+                    enabled: editorEnabled && editorDirty,
+                    click: () => {
                         const win = BrowserWindow.getFocusedWindow();
                         if (!win) return;
-
-                        await dialog.showMessageBox(win, {
-                            type: 'info',
-                            message: 'Save is not implemented yet.',
-                        });
+                        win.webContents.send('menu:file-save');
+                    },
+                },
+                {
+                    label: 'Save As...',
+                    accelerator: 'CmdOrCtrl+Shift+S',
+                    enabled: editorEnabled,
+                    click: () => {
+                        const win = BrowserWindow.getFocusedWindow();
+                        if (!win || !isEditorWindow(win)) return;
+                        win.webContents.send('menu:file-save-as');
                     },
                 },
                 { type: 'separator' },
-                process.platform === 'darwin' ? { role: 'close' } : { role: 'quit' },
+                {
+                    label: 'Close',
+                    accelerator: 'CmdOrCtrl+W',
+                    enabled: editorEnabled,
+                    click: () => {
+                        const win = BrowserWindow.getFocusedWindow();
+                        if (!win || !isEditorWindow(win)) return;
+
+                        // Closing the editor will return to the welcome screen
+                        // when it's the last editor window.
+                        win.close();
+                    },
+                },
             ],
         },
 
         { role: 'editMenu' },
-        { role: 'viewMenu' },
-        { role: 'help' },
+
+        {
+            label: 'View',
+            submenu: [{ role: 'resetZoom', label: 'Actual Size' }, { role: 'zoomIn' }, { role: 'zoomOut' }],
+        },
+
+        {
+            label: 'Help',
+            submenu: [
+                {
+                    label: 'About',
+                    click: async () => {
+                        await dialog.showMessageBox({
+                            type: 'info',
+                            title: 'About',
+                            message: 'Storybook Packager',
+                            detail: 'About is not implemented yet.',
+                        });
+                    },
+                },
+                {
+                    label: 'Check for Updates',
+                    click: async () => {
+                        await dialog.showMessageBox({
+                            type: 'info',
+                            title: 'Check for Updates',
+                            message: 'Check for Updates is not implemented yet.',
+                        });
+                    },
+                },
+            ],
+        },
     ];
 
     // macOS app menu (required for proper behavior)
@@ -63,6 +116,27 @@ function buildAppMenu() {
 
     const menu = Menu.buildFromTemplate(template);
     Menu.setApplicationMenu(menu);
+}
+
+function isEditorWindow(win: BrowserWindow | null): boolean {
+    if (!win || win.isDestroyed()) return false;
+
+    try {
+        const url = win.webContents.getURL();
+        return url.includes('/editor');
+    } catch {
+        return false;
+    }
+}
+
+function isEditorFocused(): boolean {
+    return isEditorWindow(BrowserWindow.getFocusedWindow());
+}
+
+function isFocusedEditorDirty(): boolean {
+    const win = BrowserWindow.getFocusedWindow();
+    if (!isEditorWindow(win)) return false;
+    return windowDirty.get(win!.webContents.id) === true;
 }
 
 async function startStaticServer(): Promise<number> {
@@ -87,6 +161,25 @@ async function startStaticServer(): Promise<number> {
 
 // Register IPC handlers here
 function registerIpcHandlers() {
+    ipcMain.on('window:set-title', (event, payload: { title: string; edited?: boolean }) => {
+        const win = BrowserWindow.fromWebContents(event.sender);
+        if (!win || win.isDestroyed()) return;
+
+        const baseTitle = payload.title || 'Storybook Packager';
+        const edited = Boolean(payload.edited);
+
+        // Windows/Linux convention: prefix an asterisk for unsaved changes
+        // macOS convention: NO asterisk; use the native edited dot instead
+        const fullTitle = process.platform === 'darwin' ? baseTitle : `${edited ? '* ' : ''}${baseTitle}`;
+
+        win.setTitle(fullTitle);
+
+        // macOS "document edited" indicator (dot in titlebar)
+        if (process.platform === 'darwin') {
+            win.setDocumentEdited(edited);
+        }
+    });
+
     ipcMain.on('window:minimize', () => {
         BrowserWindow.getFocusedWindow()?.minimize();
     });
@@ -178,6 +271,8 @@ function registerIpcHandlers() {
             },
         });
 
+        const wcId = editorWindow.webContents.id;
+
         if (savedState.fullscreen) {
             editorWindow.setFullScreen(true);
         } else if (savedState.maximized) {
@@ -199,7 +294,24 @@ function registerIpcHandlers() {
 
         editorWindow.on('close', () => {
             lastClosedWindow = 'editor';
-            saveEditorWindowState(editorWindow);
+
+            if (!editorWindow.isDestroyed()) {
+                try {
+                    saveEditorWindowState(editorWindow);
+                } catch (e) {
+                    console.warn('Failed to save editor window state on close:', e);
+                }
+            }
+        });
+
+        editorWindow.on('closed', () => {
+            windowDirty.delete(wcId);
+
+            // On macOS, closing the last window does NOT trigger window-all-closed quitting logic.
+            // So if no windows remain, reopen Welcome.
+            if (process.platform === 'darwin' && BrowserWindow.getAllWindows().length === 0) {
+                createWelcomeWindow();
+            }
         });
 
         // close the welcome window
@@ -231,6 +343,11 @@ function registerIpcHandlers() {
             const error = err instanceof Error ? err : new Error(String(err));
             return { success: false, error: error.message };
         }
+    });
+
+    ipcMain.on('editor:set-dirty', (event, dirty: boolean) => {
+        windowDirty.set(event.sender.id, Boolean(dirty));
+        buildAppMenu(); // re-evaluate enabled/disabled state
     });
 }
 
@@ -266,12 +383,21 @@ function createWelcomeWindow() {
 
     welcomeWindow.on('close', () => {
         lastClosedWindow = 'welcome';
-        saveWelcomeWindowState(welcomeWindow!);
+
+        if (welcomeWindow && !welcomeWindow.isDestroyed()) {
+            try {
+                saveWelcomeWindowState(welcomeWindow);
+            } catch (e) {
+                console.warn('Failed to save welcome window state on close:', e);
+            }
+        }
     });
 }
 
 app.whenReady().then(async () => {
-    buildAppMenu();
+    app.on('browser-window-focus', () => buildAppMenu());
+    app.on('browser-window-blur', () => buildAppMenu());
+
     registerIpcHandlers(); // IPCs must be ready before window launches
     if (!isDev) {
         staticPort = await startStaticServer(); // Only start Express server in prod mode
