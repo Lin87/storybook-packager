@@ -12,6 +12,7 @@ export interface EditorState {
 
 export type EditorAction =
     | { type: 'loadXml'; payload: { presentationPath: string; xml: StorybookXml } }
+    | { type: 'setPresentationPath'; payload: { presentationPath: string } }
     | { type: 'selectSection'; payload: { sectionIndex: number } }
     | { type: 'selectPage'; payload: { sectionIndex: number; pageIndex: number } }
     | { type: 'updateStorybookAttr'; payload: { field: string; value: string } }

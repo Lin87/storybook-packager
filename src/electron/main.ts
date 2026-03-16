@@ -8,7 +8,7 @@ import getPort from 'get-port';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { parseStringPromise } from 'xml2js';
+import { Builder, parseStringPromise } from 'xml2js';
 import type { StorybookXml } from '../types/sbplus';
 import { loadWelcomeWindowState, saveWelcomeWindowState, loadEditorWindowState, saveEditorWindowState } from './windowState.js';
 
@@ -26,6 +26,8 @@ let welcomeWindow: BrowserWindow | null = null;
 let staticServer: http.Server | null = null;
 let staticPort: number;
 let lastClosedWindow: 'editor' | 'welcome' | null = null;
+const allowWindowClose = new Set<number>();
+let isQuitting = false;
 
 function buildAppMenu() {
     const editorEnabled = isEditorFocused();
@@ -296,20 +298,76 @@ function registerIpcHandlers() {
             editorWindow.show(); // only show when fully ready
         });
 
-        editorWindow.on('close', () => {
+        editorWindow.on('close', async (event) => {
             lastClosedWindow = 'editor';
 
-            if (!editorWindow.isDestroyed()) {
-                try {
-                    saveEditorWindowState(editorWindow);
-                } catch (e) {
-                    console.warn('Failed to save editor window state on close:', e);
+            const dirty = windowDirty.get(wcId) === true;
+
+            if (allowWindowClose.has(wcId)) {
+                allowWindowClose.delete(wcId);
+
+                if (!editorWindow.isDestroyed()) {
+                    try {
+                        saveEditorWindowState(editorWindow);
+                    } catch (e) {
+                        console.warn('Failed to save editor window state on close:', e);
+                    }
                 }
+
+                return;
             }
+
+            if (!dirty) {
+                if (!editorWindow.isDestroyed()) {
+                    try {
+                        saveEditorWindowState(editorWindow);
+                    } catch (e) {
+                        console.warn('Failed to save editor window state on close:', e);
+                    }
+                }
+
+                return;
+            }
+
+            event.preventDefault();
+
+            const action = await promptForUnsavedChanges(editorWindow);
+
+            if (action === 'cancel') {
+                isQuitting = false;
+                return;
+            }
+
+            if (action === 'discard') {
+                windowDirty.set(wcId, false);
+                buildAppMenu();
+                allowWindowClose.add(wcId);
+                editorWindow.close();
+                return;
+            }
+
+            const saveResult = await requestRendererSave(editorWindow, 'menu:file-save', 'close');
+
+            if (saveResult?.success) {
+                windowDirty.set(wcId, false);
+                buildAppMenu();
+                allowWindowClose.add(wcId);
+                editorWindow.close();
+                return;
+            }
+
+            await dialog.showMessageBox(editorWindow, {
+                type: 'error',
+                title: 'Save Failed',
+                message: 'The presentation could not be saved.',
+                detail: saveResult?.error ?? 'Unknown save error.',
+            });
+            isQuitting = false;
         });
 
         editorWindow.on('closed', () => {
             windowDirty.delete(wcId);
+            allowWindowClose.delete(wcId);
 
             // On macOS, closing the last window does NOT trigger window-all-closed quitting logic.
             // So if no windows remain, reopen Welcome.
@@ -343,6 +401,40 @@ function registerIpcHandlers() {
             })) as StorybookXml;
 
             return { success: true, data: result };
+        } catch (err: unknown) {
+            const error = err instanceof Error ? err : new Error(String(err));
+            return { success: false, error: error.message };
+        }
+    });
+
+    ipcMain.handle('presentation:perform-save', async (_event, payload: SavePayload) => {
+        try {
+            writePresentationXml(payload.presentationPath, payload.xml);
+            saveRecent(payload.presentationPath);
+            return { success: true, path: payload.presentationPath };
+        } catch (err: unknown) {
+            const error = err instanceof Error ? err : new Error(String(err));
+            return { success: false, error: error.message };
+        }
+    });
+
+    ipcMain.handle('presentation:perform-save-as', async (_event, payload: SavePayload) => {
+        const result = await dialog.showOpenDialog({
+            title: 'Choose a location for the presentation',
+            properties: ['openDirectory', 'createDirectory'],
+        });
+
+        if (result.canceled || result.filePaths.length === 0) {
+            return null;
+        }
+
+        const targetPath = result.filePaths[0];
+
+        try {
+            ensurePresentationFolders(targetPath);
+            writePresentationXml(targetPath, payload.xml);
+            saveRecent(targetPath);
+            return { success: true, path: targetPath };
         } catch (err: unknown) {
             const error = err instanceof Error ? err : new Error(String(err));
             return { success: false, error: error.message };
@@ -416,6 +508,10 @@ app.on('activate', () => {
 });
 
 app.on('window-all-closed', () => {
+    if (isQuitting) {
+        return;
+    }
+
     if (process.platform !== 'darwin') {
         if (lastClosedWindow === 'welcome') {
             app.quit();
@@ -426,6 +522,10 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+    isQuitting = true;
+});
+
+app.on('will-quit', () => {
     if (staticServer) {
         staticServer.close(() => {
             console.log('🧹 Static server shut down.');
@@ -439,13 +539,151 @@ function makeRange(min: number, max: number): number[] {
     return Array.from({ length: max - min + 1 }, (_, i) => min + i);
 }
 
-// Helper to create the presentation folder structure
-function createPresentationFolders(basePath: string, title: string) {
+type SavePayload = {
+    presentationPath: string;
+    xml: StorybookXml;
+};
+
+type SaveResult = { success: true; path: string } | { success: false; error: string } | null;
+
+type SaveReason = 'menu' | 'close';
+
+function asArray<T>(value: T | T[] | undefined): T[] {
+    if (!value) return [];
+    return Array.isArray(value) ? value : [value];
+}
+
+function cloneStorybookXml(xml: StorybookXml): StorybookXml {
+    if (typeof structuredClone === 'function') {
+        return structuredClone(xml);
+    }
+
+    return JSON.parse(JSON.stringify(xml)) as StorybookXml;
+}
+
+function normalizeStorybookXml(xml: StorybookXml): StorybookXml {
+    const next = cloneStorybookXml(xml);
+    const storybook = next.storybook;
+
+    storybook.section = asArray(storybook.section).map((section) => ({
+        ...section,
+        page: asArray(section.page).map((page) => {
+            const normalizedPage = { ...page };
+
+            if (normalizedPage.frame) {
+                normalizedPage.frame = asArray(normalizedPage.frame);
+            }
+
+            if (normalizedPage.markers?.marker) {
+                normalizedPage.markers = {
+                    ...normalizedPage.markers,
+                    marker: asArray(normalizedPage.markers.marker),
+                };
+            }
+
+            if (normalizedPage.widget?.segment) {
+                normalizedPage.widget = {
+                    ...normalizedPage.widget,
+                    segment: asArray(normalizedPage.widget.segment),
+                };
+            }
+
+            if (normalizedPage.multipleChoiceSingle?.choices?.answer) {
+                normalizedPage.multipleChoiceSingle = {
+                    ...normalizedPage.multipleChoiceSingle,
+                    choices: {
+                        ...normalizedPage.multipleChoiceSingle.choices,
+                        answer: asArray(normalizedPage.multipleChoiceSingle.choices.answer),
+                    },
+                };
+            }
+
+            if (normalizedPage.multipleChoiceMultiple?.choices?.answer) {
+                normalizedPage.multipleChoiceMultiple = {
+                    ...normalizedPage.multipleChoiceMultiple,
+                    choices: {
+                        ...normalizedPage.multipleChoiceMultiple.choices,
+                        answer: asArray(normalizedPage.multipleChoiceMultiple.choices.answer),
+                    },
+                };
+            }
+
+            return normalizedPage;
+        }),
+    }));
+
+    return next;
+}
+
+function buildStorybookXml(xml: StorybookXml): string {
+    const builder = new Builder({
+        xmldec: { version: '1.0', encoding: 'UTF-8' },
+        renderOpts: { pretty: true, indent: '  ', newline: '\n' },
+    });
+
+    return builder.buildObject(normalizeStorybookXml(xml));
+}
+
+async function promptForUnsavedChanges(win: BrowserWindow): Promise<'save' | 'discard' | 'cancel'> {
+    const result = await dialog.showMessageBox(win, {
+        type: 'warning',
+        title: 'Unsaved Changes',
+        message: 'Do you want to save your changes before closing?',
+        detail: 'If you do not save, your changes will be lost.',
+        buttons: ['Save', 'Discard', 'Cancel'],
+        defaultId: 0,
+        cancelId: 2,
+        noLink: true,
+    });
+
+    if (result.response === 0) return 'save';
+    if (result.response === 1) return 'discard';
+    return 'cancel';
+}
+
+function requestRendererSave(win: BrowserWindow, channel: 'menu:file-save' | 'menu:file-save-as', reason: SaveReason): Promise<SaveResult> {
+    return new Promise((resolve) => {
+        const requestId = `${channel}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+        const responseChannel = `${channel}:result:${requestId}`;
+
+        const timeout = setTimeout(() => {
+            ipcMain.removeAllListeners(responseChannel);
+            resolve({ success: false, error: 'Timed out waiting for the renderer save handler.' });
+        }, 30000);
+
+        ipcMain.once(responseChannel, (_event, result: SaveResult) => {
+            clearTimeout(timeout);
+            resolve(result);
+        });
+
+        if (win.isDestroyed()) {
+            clearTimeout(timeout);
+            ipcMain.removeAllListeners(responseChannel);
+            resolve({ success: false, error: 'The editor window is no longer available.' });
+            return;
+        }
+
+        win.webContents.send(channel, { requestId, reason });
+    });
+}
+
+function ensurePresentationFolders(basePath: string) {
     const assetsPath = path.join(basePath, 'assets');
     const subDirs = ['audio', 'video', 'images', 'html', 'pages'];
 
     fs.mkdirSync(assetsPath, { recursive: true });
     subDirs.forEach((dir) => fs.mkdirSync(path.join(assetsPath, dir), { recursive: true }));
+}
+
+function writePresentationXml(basePath: string, xml: StorybookXml) {
+    ensurePresentationFolders(basePath);
+    fs.writeFileSync(path.join(basePath, 'assets', 'sbplus.xml'), buildStorybookXml(xml), 'utf-8');
+}
+
+// Helper to create the presentation folder structure
+function createPresentationFolders(basePath: string, title: string) {
+    const assetsPath = path.join(basePath, 'assets');
+    ensurePresentationFolders(basePath);
 
     const xmlContent = `<?xml version="1.0" encoding="UTF-8" ?>
 <storybook accent="#642667" pageImgFormat="jpg" splashImgFormat="jpg" mathjax="off">

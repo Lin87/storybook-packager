@@ -27,6 +27,13 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
                 xml: action.payload.xml,
                 selectedSectionIndex: null,
                 selectedPageIndex: null,
+                dirty: false,
+            };
+
+        case 'setPresentationPath':
+            return {
+                ...state,
+                presentationPath: action.payload.presentationPath,
             };
 
         case 'selectSection':

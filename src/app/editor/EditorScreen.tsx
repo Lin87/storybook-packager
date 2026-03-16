@@ -68,21 +68,79 @@ export default function EditorScreen() {
     }, [state.xml, state.dirty, state.presentationPath]);
 
     useEffect(() => {
-        const unsubscribe = window.electronAPI.onMenuFileSave(() => {
-            showToast('Save requested - not implemented yet', 'info');
+        const unsubscribe = window.electronAPI.onMenuFileSave(async (request) => {
+            if (!state.xml || !state.presentationPath) {
+                const result = { success: false as const, error: 'No presentation is loaded.' };
+                if (request.reason === 'menu') {
+                    showToast(result.error, 'error');
+                }
+                return result;
+            }
+
+            const result = await request.save({
+                presentationPath: state.presentationPath,
+                xml: state.xml,
+            });
+
+            if (result.success) {
+                dispatch({ type: 'clearDirty' });
+
+                if (request.reason === 'menu') {
+                    showToast('Presentation saved.', 'success');
+                }
+            } else {
+                if (request.reason === 'menu') {
+                    showToast(`Failed to save presentation. ${result.error}`, 'error');
+                }
+            }
+
+            return result;
         });
         return unsubscribe;
-    }, []);
+    }, [dispatch, state.presentationPath, state.xml]);
 
     useEffect(() => {
-        const unsubSaveAs = window.electronAPI.onMenuFileSaveAs(() => {
-            showToast('Save As... is not implemented yet.', 'info');
+        const unsubSaveAs = window.electronAPI.onMenuFileSaveAs(async (request) => {
+            if (!state.xml || !state.presentationPath) {
+                const result = { success: false as const, error: 'No presentation is loaded.' };
+                if (request.reason === 'menu') {
+                    showToast(result.error, 'error');
+                }
+                return result;
+            }
+
+            const result = await request.saveAs({
+                presentationPath: state.presentationPath,
+                xml: state.xml,
+            });
+
+            if (result === null) {
+                return null;
+            }
+
+            if (result.success) {
+                dispatch({
+                    type: 'setPresentationPath',
+                    payload: { presentationPath: result.path },
+                });
+                dispatch({ type: 'clearDirty' });
+
+                if (request.reason === 'menu') {
+                    showToast('Presentation saved to a new location.', 'success');
+                }
+            } else {
+                if (request.reason === 'menu') {
+                    showToast(`Failed to save presentation. ${result.error}`, 'error');
+                }
+            }
+
+            return result;
         });
 
         return () => {
             unsubSaveAs();
         };
-    }, []);
+    }, [dispatch, state.presentationPath, state.xml]);
 
     useEffect(() => {
         window.electronAPI.setEditorDirty(state.dirty);
