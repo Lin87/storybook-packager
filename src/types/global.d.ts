@@ -10,7 +10,6 @@ declare global {
             createNewPresentation: () => Promise<string | { error: string } | null>;
             openExistingPresentation: () => Promise<string | { error: string } | null>;
             getRecent: () => Promise<string[]>;
-            openFile: () => Promise<string | null>;
             minimize: () => void;
             close: () => void;
             openEditorWindow: (presentationPath: string) => Promise<void>;
