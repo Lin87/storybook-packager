@@ -404,6 +404,7 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
     const frameInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
     const [frameStartDrafts, setFrameStartDrafts] = useState<Record<number, string>>({});
     const [frameStartErrors, setFrameStartErrors] = useState<Record<number, string>>({});
+    const [showAdditionalOptions, setShowAdditionalOptions] = useState(false);
 
     if (!page) return <div className='text-sm opacity-70'>Page not found.</div>;
 
@@ -746,137 +747,152 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
                 />
             )}
 
-            {caps.supportsDescription && (
-                <AccordionSection title='Description'>
-                    <RichTextEditor
-                        label='Description'
-                        value={page.description ?? ''}
-                        onChange={(value) => updateField('description', value || undefined)}
-                    />
-                </AccordionSection>
-            )}
+            {(caps.supportsDescription || caps.supportsCopyableContent || caps.supportsMarkers || caps.supportsWidget) && (
+                <div className='space-y-4'>
+                    <button
+                        type='button'
+                        className='btn btn-outline'
+                        onClick={() => setShowAdditionalOptions((value) => !value)}>
+                        {showAdditionalOptions ? 'Hide Additional Options' : 'Show Additional Options'}
+                    </button>
 
-            {caps.supportsCopyableContent && (
-                <AccordionSection title='Copyable Content'>
-                    <TextBlock
-                        label='Copyable Content'
-                        rows={4}
-                        value={page.copyableContent ?? ''}
-                        onChange={(value) => updateField('copyableContent', value || undefined)}
-                    />
-                </AccordionSection>
-            )}
-
-            {caps.supportsMarkers && (
-                <AccordionSection title='Markers'>
-                    <ArraySection
-                        title='Markers'
-                        addLabel='Add Marker'
-                        onAdd={() =>
-                            replacePage({
-                                ...page,
-                                markers: {
-                                    marker: [...(page.markers?.marker ?? []), createEmptyMarker()],
-                                },
-                            })
-                        }>
-                        {(page.markers?.marker ?? []).map((marker, index) => (
-                            <div key={index} className='space-y-3 rounded-box border border-base-300 bg-base-100 p-3'>
-                                <div className='grid gap-3 md:grid-cols-2'>
-                                    <Field
-                                        label='Timecode'
-                                        value={marker.$?.timecode ?? ''}
-                                        onChange={(value) => {
-                                            const markers = [...(page.markers?.marker ?? [])];
-                                            markers[index] = { ...marker, $: updateAttrs(marker.$, 'timecode', value) };
-                                            replacePage({ ...page, markers: { marker: markers } });
-                                        }}
+                    {showAdditionalOptions && (
+                        <div className='space-y-4'>
+                            {caps.supportsDescription && (
+                                <AccordionSection title='Description'>
+                                    <RichTextEditor
+                                        label='Description'
+                                        value={page.description ?? ''}
+                                        onChange={(value) => updateField('description', value || undefined)}
                                     />
-                                    <Field
-                                        label='Color'
-                                        value={marker.$?.color ?? ''}
-                                        onChange={(value) => {
-                                            const markers = [...(page.markers?.marker ?? [])];
-                                            markers[index] = { ...marker, $: updateAttrs(marker.$, 'color', value) };
-                                            replacePage({ ...page, markers: { marker: markers } });
-                                        }}
-                                    />
-                                </div>
-                                <TextBlock
-                                    label='Label'
-                                    value={marker._ ?? ''}
-                                    rows={2}
-                                    onChange={(value) => {
-                                        const markers = [...(page.markers?.marker ?? [])];
-                                        markers[index] = { ...marker, _: value };
-                                        replacePage({ ...page, markers: { marker: markers } });
-                                    }}
-                                />
-                                <button
-                                    type='button'
-                                    className='btn btn-sm btn-error btn-outline'
-                                    onClick={() => replacePage({ ...page, markers: { marker: (page.markers?.marker ?? []).filter((_, currentIndex) => currentIndex !== index) } })}>
-                                    Remove Marker
-                                </button>
-                            </div>
-                        ))}
-                    </ArraySection>
-                </AccordionSection>
-            )}
+                                </AccordionSection>
+                            )}
 
-            {caps.supportsWidget && (
-                <AccordionSection title='Widget Segments'>
-                    <ArraySection
-                        title='Widget Segments'
-                        addLabel='Add Segment'
-                        onAdd={() =>
-                            replacePage({
-                                ...page,
-                                widget: {
-                                    ...(page.widget ?? {}),
-                                    segment: [...(page.widget?.segment ?? []), createEmptySegment()],
-                                },
-                            })
-                        }>
-                        {(page.widget?.segment ?? []).map((segment, index) => (
-                            <div key={index} className='space-y-3 rounded-box border border-base-300 bg-base-100 p-3'>
-                                <Field
-                                    label='Segment Name'
-                                    value={segment.$?.name ?? ''}
-                                    onChange={(value) => {
-                                        const segments = [...(page.widget?.segment ?? [])];
-                                        segments[index] = { ...segment, $: updateAttrs(segment.$, 'name', value) };
-                                        replacePage({ ...page, widget: { ...(page.widget ?? {}), segment: segments } });
-                                    }}
-                                />
-                                <RichTextEditor
-                                    label='Segment Content'
-                                    value={segment._ ?? ''}
-                                    onChange={(value) => {
-                                        const segments = [...(page.widget?.segment ?? [])];
-                                        segments[index] = { ...segment, _: value };
-                                        replacePage({ ...page, widget: { ...(page.widget ?? {}), segment: segments } });
-                                    }}
-                                    minHeightClassName='min-h-24'
-                                />
-                                <button
-                                    type='button'
-                                    className='btn btn-sm btn-error btn-outline'
-                                    onClick={() =>
-                                        replacePage({
-                                            ...page,
-                                            widget: {
-                                                ...(page.widget ?? {}),
-                                                segment: (page.widget?.segment ?? []).filter((_, currentIndex) => currentIndex !== index),
-                                            },
-                                        })
-                                    }>
-                                    Remove Segment
-                                </button>
-                            </div>
-                        ))}
-                    </ArraySection>
-                </AccordionSection>
+                            {caps.supportsCopyableContent && (
+                                <AccordionSection title='Copyable Content'>
+                                    <TextBlock
+                                        label='Copyable Content'
+                                        rows={4}
+                                        value={page.copyableContent ?? ''}
+                                        onChange={(value) => updateField('copyableContent', value || undefined)}
+                                    />
+                                </AccordionSection>
+                            )}
+
+                            {caps.supportsMarkers && (
+                                <AccordionSection title='Markers'>
+                                    <ArraySection
+                                        title='Markers'
+                                        addLabel='Add Marker'
+                                        onAdd={() =>
+                                            replacePage({
+                                                ...page,
+                                                markers: {
+                                                    marker: [...(page.markers?.marker ?? []), createEmptyMarker()],
+                                                },
+                                            })
+                                        }>
+                                        {(page.markers?.marker ?? []).map((marker, index) => (
+                                            <div key={index} className='space-y-3 rounded-box border border-base-300 bg-base-100 p-3'>
+                                                <div className='grid gap-3 md:grid-cols-2'>
+                                                    <Field
+                                                        label='Timecode'
+                                                        value={marker.$?.timecode ?? ''}
+                                                        onChange={(value) => {
+                                                            const markers = [...(page.markers?.marker ?? [])];
+                                                            markers[index] = { ...marker, $: updateAttrs(marker.$, 'timecode', value) };
+                                                            replacePage({ ...page, markers: { marker: markers } });
+                                                        }}
+                                                    />
+                                                    <Field
+                                                        label='Color'
+                                                        value={marker.$?.color ?? ''}
+                                                        onChange={(value) => {
+                                                            const markers = [...(page.markers?.marker ?? [])];
+                                                            markers[index] = { ...marker, $: updateAttrs(marker.$, 'color', value) };
+                                                            replacePage({ ...page, markers: { marker: markers } });
+                                                        }}
+                                                    />
+                                                </div>
+                                                <TextBlock
+                                                    label='Label'
+                                                    value={marker._ ?? ''}
+                                                    rows={2}
+                                                    onChange={(value) => {
+                                                        const markers = [...(page.markers?.marker ?? [])];
+                                                        markers[index] = { ...marker, _: value };
+                                                        replacePage({ ...page, markers: { marker: markers } });
+                                                    }}
+                                                />
+                                                <button
+                                                    type='button'
+                                                    className='btn btn-sm btn-error btn-outline'
+                                                    onClick={() => replacePage({ ...page, markers: { marker: (page.markers?.marker ?? []).filter((_, currentIndex) => currentIndex !== index) } })}>
+                                                    Remove Marker
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </ArraySection>
+                                </AccordionSection>
+                            )}
+
+                            {caps.supportsWidget && (
+                                <AccordionSection title='Widget Segments'>
+                                    <ArraySection
+                                        title='Widget Segments'
+                                        addLabel='Add Segment'
+                                        onAdd={() =>
+                                            replacePage({
+                                                ...page,
+                                                widget: {
+                                                    ...(page.widget ?? {}),
+                                                    segment: [...(page.widget?.segment ?? []), createEmptySegment()],
+                                                },
+                                            })
+                                        }>
+                                        {(page.widget?.segment ?? []).map((segment, index) => (
+                                            <div key={index} className='space-y-3 rounded-box border border-base-300 bg-base-100 p-3'>
+                                                <Field
+                                                    label='Segment Name'
+                                                    value={segment.$?.name ?? ''}
+                                                    onChange={(value) => {
+                                                        const segments = [...(page.widget?.segment ?? [])];
+                                                        segments[index] = { ...segment, $: updateAttrs(segment.$, 'name', value) };
+                                                        replacePage({ ...page, widget: { ...(page.widget ?? {}), segment: segments } });
+                                                    }}
+                                                />
+                                                <RichTextEditor
+                                                    label='Segment Content'
+                                                    value={segment._ ?? ''}
+                                                    onChange={(value) => {
+                                                        const segments = [...(page.widget?.segment ?? [])];
+                                                        segments[index] = { ...segment, _: value };
+                                                        replacePage({ ...page, widget: { ...(page.widget ?? {}), segment: segments } });
+                                                    }}
+                                                    minHeightClassName='min-h-24'
+                                                />
+                                                <button
+                                                    type='button'
+                                                    className='btn btn-sm btn-error btn-outline'
+                                                    onClick={() =>
+                                                        replacePage({
+                                                            ...page,
+                                                            widget: {
+                                                                ...(page.widget ?? {}),
+                                                                segment: (page.widget?.segment ?? []).filter((_, currentIndex) => currentIndex !== index),
+                                                            },
+                                                        })
+                                                    }>
+                                                    Remove Segment
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </ArraySection>
+                                </AccordionSection>
+                            )}
+                        </div>
+                    )}
+                </div>
             )}
 
             {caps.supportsAudio && (
