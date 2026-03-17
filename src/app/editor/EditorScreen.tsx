@@ -146,6 +146,10 @@ export default function EditorScreen() {
         window.electronAPI.setEditorDirty(state.dirty);
     }, [state.dirty]);
 
+    if (error) {
+        return <p className='p-4 text-error'>{error}</p>;
+    }
+
     if (!state.xml) {
         return <p className='p-4'>Loading...</p>;
     }

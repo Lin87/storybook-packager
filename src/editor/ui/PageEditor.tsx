@@ -15,10 +15,13 @@ export default function PageEditorHost() {
     const sIndex = state.selectedSectionIndex;
     const pIndex = state.selectedPageIndex;
 
-    if (!state.xml || sIndex === null || pIndex === null) return null;
+    const section = !state.xml || sIndex === null ? null : asArray(state.xml.storybook.section)[sIndex];
+    const page = section && pIndex !== null ? asArray(section.page)[pIndex] : null;
+    const type = page?.$?.type ?? 'unknown';
+    const registration = useMemo(() => getPageEditorRegistration(type), [type]);
+    const Editor = registration.Editor;
 
-    const section = asArray(state.xml.storybook.section)[sIndex];
-    const page = asArray(section?.page)[pIndex];
+    if (!state.xml || sIndex === null || pIndex === null) return null;
 
     if (!section || !page) {
         return (
@@ -27,10 +30,6 @@ export default function PageEditorHost() {
             </div>
         );
     }
-
-    const type = page.$?.type ?? 'unknown';
-    const registration = useMemo(() => getPageEditorRegistration(type), [type]);
-    const Editor = registration.Editor;
 
     return (
         <div className='space-y-4'>

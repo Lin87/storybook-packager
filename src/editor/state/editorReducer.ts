@@ -1,4 +1,6 @@
-import type { EditorState, EditorAction } from './editorTypes';
+import { convertPageType, convertQuizSubtype, createDefaultPage } from '@/editor/pageModel';
+import type { Page, Section } from '@/types/sbplus';
+import type { EditorAction, EditorState } from './editorTypes';
 
 function arrayMove<T>(arr: T[], from: number, to: number): T[] {
     const copy = [...arr];
@@ -7,19 +9,55 @@ function arrayMove<T>(arr: T[], from: number, to: number): T[] {
     return copy;
 }
 
+function asArray<T>(value: T | T[] | undefined): T[] {
+    if (!value) return [];
+    return Array.isArray(value) ? value : [value];
+}
+
+function getSections(state: EditorState): Section[] {
+    return state.xml ? asArray(state.xml.storybook.section) : [];
+}
+
+function updateSections(state: EditorState, sections: Section[]): EditorState {
+    if (!state.xml) return state;
+
+    return {
+        ...state,
+        xml: {
+            ...state.xml,
+            storybook: {
+                ...state.xml.storybook,
+                section: sections,
+            },
+        },
+        dirty: true,
+    };
+}
+
+function updatePageAt(state: EditorState, sectionIndex: number, pageIndex: number, updater: (page: Page) => Page): EditorState {
+    const sections = getSections(state);
+    if (sectionIndex < 0 || sectionIndex >= sections.length) return state;
+
+    const section = sections[sectionIndex];
+    const pages = asArray(section.page);
+    if (pageIndex < 0 || pageIndex >= pages.length) return state;
+
+    const nextPages = pages.map((page, index) => (index === pageIndex ? updater(page) : page));
+    const nextSections = sections.map((entry, index) => (index === sectionIndex ? { ...section, page: nextPages } : entry));
+
+    return updateSections(state, nextSections);
+}
+
 export const initialEditorState: EditorState = {
     presentationPath: '',
     xml: null,
-
     selectedSectionIndex: null,
     selectedPageIndex: null,
-
     dirty: false,
 };
 
 export function editorReducer(state: EditorState, action: EditorAction): EditorState {
     switch (action.type) {
-
         case 'loadXml':
             return {
                 ...state,
@@ -53,17 +91,14 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         case 'updateStorybookAttr': {
             if (!state.xml) return state;
 
-            const sb = state.xml.storybook;
-            const prevAttrs = sb.$ ?? {};
-
             return {
                 ...state,
                 xml: {
                     ...state.xml,
                     storybook: {
-                        ...sb,
+                        ...state.xml.storybook,
                         $: {
-                            ...prevAttrs,
+                            ...(state.xml.storybook.$ ?? {}),
                             [action.payload.field]: action.payload.value,
                         },
                     },
@@ -75,19 +110,16 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         case 'updateSetupField': {
             if (!state.xml) return state;
 
-            const sb = state.xml.storybook;
-            const setup = sb.setup;
-
             return {
                 ...state,
                 xml: {
                     ...state.xml,
                     storybook: {
-                        ...sb,
+                        ...state.xml.storybook,
                         setup: {
-                            ...setup,
+                            ...state.xml.storybook.setup,
                             [action.payload.field]: action.payload.value,
-                        } as any,
+                        } as typeof state.xml.storybook.setup,
                     },
                 },
                 dirty: true,
@@ -97,28 +129,22 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         case 'updateAuthorName': {
             if (!state.xml) return state;
 
-            const sb = state.xml.storybook;
-            const setup = sb.setup;
-            const author = setup.author;
-
-            // If author or author.$ is missing, create it
-            const nextAuthor = {
-                ...(author ?? { _: '' }),
-                $: {
-                    ...(author && author.$ ? author.$ : {}),
-                    name: action.payload.value,
-                },
-            };
-
+            const author = state.xml.storybook.setup.author;
             return {
                 ...state,
                 xml: {
                     ...state.xml,
                     storybook: {
-                        ...sb,
+                        ...state.xml.storybook,
                         setup: {
-                            ...setup,
-                            author: nextAuthor,
+                            ...state.xml.storybook.setup,
+                            author: {
+                                ...(author ?? { _: '' }),
+                                $: {
+                                    ...(author?.$ ?? {}),
+                                    name: action.payload.value,
+                                },
+                            },
                         },
                     },
                 },
@@ -129,24 +155,19 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         case 'updateAuthorBio': {
             if (!state.xml) return state;
 
-            const sb = state.xml.storybook;
-            const setup = sb.setup;
-            const author = setup.author;
-
-            const nextAuthor = {
-                ...(author ?? { $: { name: '' } }),
-                _: action.payload.value,
-            };
-
+            const author = state.xml.storybook.setup.author;
             return {
                 ...state,
                 xml: {
                     ...state.xml,
                     storybook: {
-                        ...sb,
+                        ...state.xml.storybook,
                         setup: {
-                            ...setup,
-                            author: nextAuthor,
+                            ...state.xml.storybook.setup,
+                            author: {
+                                ...(author ?? { $: { name: '' } }),
+                                _: action.payload.value,
+                            },
                         },
                     },
                 },
@@ -157,346 +178,230 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         case 'addSection': {
             if (!state.xml) return state;
 
-            const sb = state.xml.storybook;
-
-            const currentSectionsRaw = sb.section as any;
-            const currentSections = Array.isArray(currentSectionsRaw) ? currentSectionsRaw : currentSectionsRaw ? [currentSectionsRaw] : [];
-
-            const newSection = {
-                $: { title: `New Section ${currentSections.length + 1}` },
-                page: [],
-            };
-
-            const nextSections = [...currentSections, newSection];
-            const newSectionIndex = nextSections.length - 1;
+            const sections = getSections(state);
+            const nextSections = [
+                ...sections,
+                {
+                    $: { title: `New Section ${sections.length + 1}` },
+                    page: [],
+                },
+            ];
 
             return {
-                ...state,
-                xml: {
-                    ...state.xml,
-                    storybook: {
-                        ...sb,
-                        section: nextSections, // always array going forward
-                    },
-                },
-                selectedSectionIndex: newSectionIndex,
+                ...updateSections(state, nextSections),
+                selectedSectionIndex: nextSections.length - 1,
                 selectedPageIndex: null,
-                dirty: true,
             };
         }
 
         case 'removeSection': {
-            if (!state.xml) return state;
+            const sections = getSections(state);
+            const index = action.payload.index;
 
-            const { index } = action.payload;
-            const sb = state.xml.storybook;
-
-            const raw = sb.section as any;
-            const sections = Array.isArray(raw) ? raw : raw ? [raw] : [];
-
-            if (index < 0 || index >= sections.length) return state;
-            if (sections.length === 1) return state;
+            if (index < 0 || index >= sections.length || sections.length === 1) return state;
 
             const current = sections[index];
-            const currentPages = Array.isArray(current.page) ? current.page : current.page ? [current.page] : [];
-
             const targetIndex = index === 0 ? 1 : index - 1;
             const target = sections[targetIndex];
 
-            const targetPages = Array.isArray(target.page) ? target.page : target.page ? [target.page] : [];
-
             const nextTarget = {
                 ...target,
-                page: [...targetPages, ...currentPages],
+                page: [...asArray(target.page), ...asArray(current.page)],
             };
 
-            const nextSections = sections.map((s, i) => (i === targetIndex ? nextTarget : s));
-            nextSections.splice(index, 1);
+            const nextSections = sections.map((section, sectionIndex) => (sectionIndex === targetIndex ? nextTarget : section)).filter((_, sectionIndex) => sectionIndex !== index);
 
             return {
-                ...state,
-                xml: {
-                    ...state.xml,
-                    storybook: {
-                        ...sb,
-                        section: nextSections,
-                    },
-                },
+                ...updateSections(state, nextSections),
                 selectedSectionIndex: null,
                 selectedPageIndex: null,
-                dirty: true,
             };
         }
 
         case 'renameSection': {
-            if (!state.xml) return state;
-
-            const sb = state.xml.storybook;
-            const raw = sb.section as any;
-            const sections = Array.isArray(raw) ? raw : raw ? [raw] : [];
-
+            const sections = getSections(state);
             const idx = action.payload.index;
             if (idx < 0 || idx >= sections.length) return state;
 
-            const section = sections[idx];
-            const nextSection = {
-                ...section,
-                $: {
-                    ...(section.$ ?? {}),
-                    title: action.payload.title,
-                },
-            };
+            const nextSections = sections.map((section, index) =>
+                index === idx
+                    ? {
+                        ...section,
+                        $: {
+                            ...(section.$ ?? {}),
+                            title: action.payload.title,
+                        },
+                    }
+                    : section
+            );
 
-            const nextSections = sections.map((s, i) => (i === idx ? nextSection : s));
-
-            return {
-                ...state,
-                xml: {
-                    ...state.xml,
-                    storybook: {
-                        ...sb,
-                        section: nextSections,
-                    },
-                },
-                dirty: true,
-            };
+            return updateSections(state, nextSections);
         }
 
         case 'addPage': {
-            if (!state.xml) return state;
-
+            const sections = getSections(state);
             const { sectionIndex, pageType } = action.payload;
-            const sb = state.xml.storybook;
-
-            const raw = sb.section as any;
-            const sections = Array.isArray(raw) ? raw : raw ? [raw] : [];
-
             if (sectionIndex < 0 || sectionIndex >= sections.length) return state;
 
             const section = sections[sectionIndex];
-            const pages = Array.isArray(section.page) ? section.page : section.page ? [section.page] : [];
-
-            const newPage = {
-                $: { type: pageType, title: 'New Page' },
-            };
-
-            const nextPages = [...pages, newPage];
-            const nextSection = { ...section, page: nextPages };
-            const nextSections = sections.map((s, i) => (i === sectionIndex ? nextSection : s));
-
-            const newPageIndex = nextPages.length - 1;
+            const nextPages = [...asArray(section.page), createDefaultPage(pageType as Parameters<typeof createDefaultPage>[0])];
+            const nextSections = sections.map((entry, index) => (index === sectionIndex ? { ...section, page: nextPages } : entry));
 
             return {
-                ...state,
-                xml: {
-                    ...state.xml,
-                    storybook: {
-                        ...sb,
-                        section: nextSections,
-                    },
-                },
+                ...updateSections(state, nextSections),
                 selectedSectionIndex: sectionIndex,
-                selectedPageIndex: newPageIndex,
-                dirty: true,
+                selectedPageIndex: nextPages.length - 1,
             };
         }
 
         case 'removePage': {
-            if (!state.xml) return state;
-
+            const sections = getSections(state);
             const { sectionIndex, pageIndex } = action.payload;
-            const sb = state.xml.storybook;
-
-            const raw = sb.section as any;
-            const sections = Array.isArray(raw) ? raw : raw ? [raw] : [];
-
             if (sectionIndex < 0 || sectionIndex >= sections.length) return state;
 
             const section = sections[sectionIndex];
-            const pages = Array.isArray(section.page) ? section.page : section.page ? [section.page] : [];
-
+            const pages = asArray(section.page);
             if (pageIndex < 0 || pageIndex >= pages.length) return state;
 
-            const nextPages = pages.filter((_: any, i: number) => i !== pageIndex);
-
-            const nextSection = {
-                ...section,
-                page: nextPages,
-            };
-
-            const nextSections = sections.map((s, i) => (i === sectionIndex ? nextSection : s));
+            const nextSections = sections.map((entry, index) =>
+                index === sectionIndex
+                    ? {
+                        ...section,
+                        page: pages.filter((_, currentIndex) => currentIndex !== pageIndex),
+                    }
+                    : entry
+            );
 
             return {
-                ...state,
-                xml: {
-                    ...state.xml,
-                    storybook: {
-                        ...sb,
-                        section: nextSections,
-                    },
-                },
+                ...updateSections(state, nextSections),
                 selectedPageIndex: null,
-                dirty: true,
             };
         }
 
-        case 'renamePage': {
-            if (!state.xml) return state;
-
-            const { sectionIndex, pageIndex, title } = action.payload;
-            const sb = state.xml.storybook;
-
-            const raw = sb.section as any;
-            const sections = Array.isArray(raw) ? raw : raw ? [raw] : [];
-
-            if (sectionIndex < 0 || sectionIndex >= sections.length) return state;
-
-            const section = sections[sectionIndex];
-            const pages = Array.isArray(section.page) ? section.page : section.page ? [section.page] : [];
-
-            if (pageIndex < 0 || pageIndex >= pages.length) return state;
-
-            const page = pages[pageIndex];
-            const nextPage = {
+        case 'renamePage':
+            return updatePageAt(state, action.payload.sectionIndex, action.payload.pageIndex, (page) => ({
                 ...page,
                 $: {
                     ...(page.$ ?? {}),
-                    title,
+                    title: action.payload.title,
                 },
-            };
+            }));
 
-            const nextPages = pages.map((p: any, i: number) => (i === pageIndex ? nextPage : p));
-            const nextSection = { ...section, page: nextPages };
-            const nextSections = sections.map((s, i) => (i === sectionIndex ? nextSection : s));
+        case 'replacePage':
+            return updatePageAt(state, action.payload.sectionIndex, action.payload.pageIndex, () => action.payload.page);
 
-            return {
-                ...state,
-                xml: {
-                    ...state.xml,
-                    storybook: {
-                        ...sb,
-                        section: nextSections,
-                    },
-                },
-                dirty: true,
-            };
-        }
+        case 'updatePageAttr':
+            return updatePageAt(state, action.payload.sectionIndex, action.payload.pageIndex, (page) => {
+                const attrs = { ...(page.$ ?? {}) };
+                if (action.payload.value === undefined) {
+                    delete attrs[action.payload.field];
+                } else {
+                    attrs[action.payload.field] = action.payload.value;
+                }
+
+                return {
+                    ...page,
+                    $: attrs,
+                };
+            });
+
+        case 'updatePageField':
+            return updatePageAt(state, action.payload.sectionIndex, action.payload.pageIndex, (page) => {
+                const nextPage: Page = { ...page };
+                if (action.payload.value === undefined) {
+                    delete nextPage[action.payload.field];
+                } else {
+                    nextPage[action.payload.field] = action.payload.value;
+                }
+                return nextPage;
+            });
+
+        case 'changePageType':
+            return updatePageAt(state, action.payload.sectionIndex, action.payload.pageIndex, (page) => convertPageType(page, action.payload.pageType));
+
+        case 'changeQuizSubtype':
+            return updatePageAt(state, action.payload.sectionIndex, action.payload.pageIndex, (page) => convertQuizSubtype(page, action.payload.quizSubtype));
 
         case 'reorderSections': {
-            if (!state.xml) return state;
-
             const { fromIndex, toIndex } = action.payload;
-            if (fromIndex === toIndex) return state;
-
-            const sb = state.xml.storybook;
-            const raw = sb.section as any;
-            const sections = Array.isArray(raw) ? raw : raw ? [raw] : [];
-
-            if (fromIndex < 0 || fromIndex >= sections.length || toIndex < 0 || toIndex >= sections.length) return state;
-
-            const reordered = arrayMove(sections, fromIndex, toIndex);
-
-            const nextSelectedSection = state.selectedSectionIndex === null ? null : state.selectedSectionIndex === fromIndex ? toIndex : state.selectedSectionIndex;
+            const sections = getSections(state);
+            if (fromIndex === toIndex || fromIndex < 0 || fromIndex >= sections.length || toIndex < 0 || toIndex >= sections.length) return state;
 
             return {
-                ...state,
-                xml: {
-                    ...state.xml,
-                    storybook: {
-                        ...sb,
-                        section: reordered,
-                    },
-                },
-                selectedSectionIndex: nextSelectedSection,
-                dirty: true,
+                ...updateSections(state, arrayMove(sections, fromIndex, toIndex)),
+                selectedSectionIndex:
+                    state.selectedSectionIndex === null ? null : state.selectedSectionIndex === fromIndex ? toIndex : state.selectedSectionIndex,
             };
         }
 
         case 'reorderPages': {
-            if (!state.xml) return state;
-
             const { sectionIndex, fromIndex, toIndex } = action.payload;
-            if (fromIndex === toIndex) return state;
-
-            const sb = state.xml.storybook;
-            const raw = sb.section as any;
-            const sections = Array.isArray(raw) ? raw : raw ? [raw] : [];
-
-            if (sectionIndex < 0 || sectionIndex >= sections.length) return state;
+            const sections = getSections(state);
+            if (sectionIndex < 0 || sectionIndex >= sections.length || fromIndex === toIndex) return state;
 
             const section = sections[sectionIndex];
-
-            const pages = Array.isArray(section.page) ? section.page : section.page ? [section.page] : [];
-
+            const pages = asArray(section.page);
             if (fromIndex < 0 || fromIndex >= pages.length || toIndex < 0 || toIndex >= pages.length) return state;
 
-            const nextPages = arrayMove(pages, fromIndex, toIndex);
-            const nextSection = { ...section, page: nextPages };
-            const nextSections = sections.map((s, i) => (i === sectionIndex ? nextSection : s));
-
-            const nextSelectedPage = state.selectedPageIndex === null ? null : state.selectedPageIndex === fromIndex ? toIndex : state.selectedPageIndex;
+            const nextSections = sections.map((entry, index) =>
+                index === sectionIndex
+                    ? {
+                        ...section,
+                        page: arrayMove(pages, fromIndex, toIndex),
+                    }
+                    : entry
+            );
 
             return {
-                ...state,
-                xml: {
-                    ...state.xml,
-                    storybook: {
-                        ...sb,
-                        section: nextSections,
-                    },
-                },
-                selectedPageIndex: nextSelectedPage,
-                dirty: true,
+                ...updateSections(state, nextSections),
+                selectedPageIndex:
+                    state.selectedPageIndex === null ? null : state.selectedPageIndex === fromIndex ? toIndex : state.selectedPageIndex,
             };
         }
 
         case 'movePageBetweenSections': {
-            if (!state.xml) return state;
-
             const { fromSectionIndex, fromPageIndex, toSectionIndex, toPageIndex } = action.payload;
-
-            const sb = state.xml.storybook;
-            const raw = sb.section as any;
-            const sections = Array.isArray(raw) ? raw : raw ? [raw] : [];
-
-            if (fromSectionIndex < 0 || fromSectionIndex >= sections.length || toSectionIndex < 0 || toSectionIndex >= sections.length) return state;
+            const sections = getSections(state);
+            if (
+                fromSectionIndex < 0 ||
+                fromSectionIndex >= sections.length ||
+                toSectionIndex < 0 ||
+                toSectionIndex >= sections.length
+            ) {
+                return state;
+            }
 
             const fromSection = sections[fromSectionIndex];
             const toSection = sections[toSectionIndex];
-
-            const fromPages = Array.isArray(fromSection.page) ? fromSection.page : fromSection.page ? [fromSection.page] : [];
-
-            const toPages = Array.isArray(toSection.page) ? toSection.page : toSection.page ? [toSection.page] : [];
-
+            const fromPages = asArray(fromSection.page);
+            const toPages = asArray(toSection.page);
             if (fromPageIndex < 0 || fromPageIndex >= fromPages.length) return state;
 
-            // Clamp insertion index (so dropping past end inserts at end)
             const safeToIndex = Math.max(0, Math.min(toPageIndex, toPages.length));
-
             const movedPage = fromPages[fromPageIndex];
 
-            // Build next arrays immutably
-            const nextFromPages = fromPages.filter((_: any, i: number) => i !== fromPageIndex);
-            const nextToPages = [...toPages.slice(0, safeToIndex), movedPage, ...toPages.slice(safeToIndex)];
+            const nextSections = sections.map((section, index) => {
+                if (index === fromSectionIndex) {
+                    return {
+                        ...fromSection,
+                        page: fromPages.filter((_, pageIndex) => pageIndex !== fromPageIndex),
+                    };
+                }
 
-            const nextSections = sections.map((s, i) => {
-                if (i === fromSectionIndex) return { ...fromSection, page: nextFromPages };
-                if (i === toSectionIndex) return { ...toSection, page: nextToPages };
-                return s;
+                if (index === toSectionIndex) {
+                    return {
+                        ...toSection,
+                        page: [...toPages.slice(0, safeToIndex), movedPage, ...toPages.slice(safeToIndex)],
+                    };
+                }
+
+                return section;
             });
 
             return {
-                ...state,
-                xml: {
-                    ...state.xml,
-                    storybook: {
-                        ...sb,
-                        section: nextSections,
-                    },
-                },
+                ...updateSections(state, nextSections),
                 selectedSectionIndex: toSectionIndex,
                 selectedPageIndex: safeToIndex,
-                dirty: true,
             };
         }
 

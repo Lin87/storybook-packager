@@ -1,21 +1,22 @@
-import GenericPageEditor from './GenericPageEditor';
+import { PAGE_TYPE_LABELS, type SupportedPageType } from '@/editor/pageModel';
+import QuizPageEditor from './QuizPageEditor';
+import StandardPageEditor from './StandardPageEditor';
 import type { PageEditorRegistration } from './types';
 
-const REGISTRY: Record<string, PageEditorRegistration> = {
-    image: { label: 'Image Page', Editor: GenericPageEditor },
-    'image-audio': { label: 'Image + Audio Page', Editor: GenericPageEditor },
-    bundle: { label: 'Bundle Page', Editor: GenericPageEditor },
-    video: { label: 'Video Page', Editor: GenericPageEditor },
-    youtube: { label: 'YouTube Page', Editor: GenericPageEditor },
-    kaltura: { label: 'Kaltura Page', Editor: GenericPageEditor },
-    brightcove: { label: 'Brightcove Page', Editor: GenericPageEditor },
-
-    html: { label: 'HTML Page', Editor: GenericPageEditor },
-    quiz: { label: 'Quiz Page', Editor: GenericPageEditor },
+const REGISTRY: Record<SupportedPageType, PageEditorRegistration> = {
+    image: { label: PAGE_TYPE_LABELS.image, Editor: StandardPageEditor },
+    'image-audio': { label: PAGE_TYPE_LABELS['image-audio'], Editor: StandardPageEditor },
+    bundle: { label: PAGE_TYPE_LABELS.bundle, Editor: StandardPageEditor },
+    video: { label: PAGE_TYPE_LABELS.video, Editor: StandardPageEditor },
+    youtube: { label: PAGE_TYPE_LABELS.youtube, Editor: StandardPageEditor },
+    kaltura: { label: PAGE_TYPE_LABELS.kaltura, Editor: StandardPageEditor },
+    brightcove: { label: PAGE_TYPE_LABELS.brightcove, Editor: StandardPageEditor },
+    html: { label: PAGE_TYPE_LABELS.html, Editor: StandardPageEditor },
+    quiz: { label: PAGE_TYPE_LABELS.quiz, Editor: QuizPageEditor },
 };
 
-const FALLBACK: PageEditorRegistration = { label: 'Page Editor', Editor: GenericPageEditor };
+const FALLBACK: PageEditorRegistration = { label: 'Page Editor', Editor: StandardPageEditor };
 
 export function getPageEditorRegistration(pageType: string): PageEditorRegistration {
-    return REGISTRY[pageType] ?? FALLBACK;
+    return pageType in REGISTRY ? REGISTRY[pageType as SupportedPageType] : FALLBACK;
 }
