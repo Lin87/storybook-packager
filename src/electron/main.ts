@@ -568,6 +568,7 @@ type ImportAssetPayload = {
     kind: 'page-image' | 'page-audio' | 'bundle-audio' | 'video';
     sourceName: string;
     imageFormat?: string;
+    targetBaseName?: string;
 };
 
 type AssetDataPayload = {
@@ -736,13 +737,15 @@ async function importPresentationAsset(payload: ImportAssetPayload): Promise<str
         throw new Error('Enter a source name before importing an asset.');
     }
 
+    const targetBaseName = payload.targetBaseName?.trim() || sourceName;
+
     let filters: Electron.FileFilter[] = [];
     let targetPath = '';
 
     if (payload.kind === 'page-image') {
         const imageFormat = (payload.imageFormat || 'jpg').toLowerCase();
         filters = [{ name: `${imageFormat.toUpperCase()} image`, extensions: [imageFormat] }];
-        targetPath = path.join(payload.presentationPath, 'assets', 'pages', `${sourceName}.${imageFormat}`);
+        targetPath = path.join(payload.presentationPath, 'assets', 'pages', `${targetBaseName}.${imageFormat}`);
     } else if (payload.kind === 'page-audio') {
         filters = [{ name: 'MP3 audio', extensions: ['mp3'] }];
         targetPath = path.join(payload.presentationPath, 'assets', 'audio', `${sourceName}.mp3`);

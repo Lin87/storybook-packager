@@ -29,6 +29,7 @@ interface ImportAssetPayload {
     kind: "page-image" | "page-audio" | "bundle-audio" | "video";
     sourceName: string;
     imageFormat?: string;
+    targetBaseName?: string;
 }
 
 interface AssetDataPayload {

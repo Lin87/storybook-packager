@@ -111,7 +111,7 @@ function buildPreviewUrl(page: Page, pageType: SupportedPageType, presentationPa
     const source = page.$?.src?.trim();
     if (!source || !presentationPath) return null;
 
-    if (pageType === 'image' || pageType === 'image-audio' || pageType === 'bundle') {
+    if (pageType === 'image' || pageType === 'image-audio') {
         return null;
     }
 
@@ -137,7 +137,14 @@ function buildPreviewUrl(page: Page, pageType: SupportedPageType, presentationPa
 function buildImagePreviewAssetPath(page: Page, presentationPath: string, imageFormat: string) {
     const source = page.$?.src?.trim();
     if (!source || !presentationPath) return null;
-    const imageName = withExtension(source, imageFormat || 'jpg');
+    const imageBaseName = getPageType(page) === 'bundle' ? `${source}-1` : source;
+    const imageName = withExtension(imageBaseName, imageFormat || 'jpg');
+    return `${presentationPath}\\assets\\pages\\${imageName}`;
+}
+
+function buildFramePreviewAssetPath(source: string | undefined, presentationPath: string, imageFormat: string, frameNumber: number) {
+    if (!source || !presentationPath) return null;
+    const imageName = withExtension(`${source}-${frameNumber}`, imageFormat || 'jpg');
     return `${presentationPath}\\assets\\pages\\${imageName}`;
 }
 
@@ -298,6 +305,46 @@ function SourcePreview({ page, pageType, presentationPath, imageFormat, refreshK
     );
 }
 
+function FrameThumbnail({
+    assetPath,
+    alt,
+    refreshKey,
+}: {
+    assetPath: string | null;
+    alt: string;
+    refreshKey: number;
+}) {
+    const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        if (!assetPath) {
+            setImageDataUrl(null);
+            return;
+        }
+
+        window.electronAPI.getPresentationAssetDataUrl({ filePath: assetPath }).then((result) => {
+            if (cancelled) return;
+            setImageDataUrl(result.success ? result.dataUrl : null);
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [assetPath, refreshKey]);
+
+    if (!imageDataUrl) {
+        return (
+            <div className='flex h-18 w-24 items-center justify-center rounded-box border border-dashed border-base-300 bg-base-100 text-[11px] opacity-70'>
+                No image
+            </div>
+        );
+    }
+
+    return <img src={imageDataUrl} alt={alt} className='h-18 w-24 rounded-box border border-base-300 object-cover bg-base-100' />;
+}
+
 export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEditorProps) {
     const { dispatch, page, state } = usePageEditorState(sectionIndex, pageIndex);
 
@@ -354,6 +401,32 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
         }
     };
 
+    const handleImportFrameImage = async (frameNumber: number) => {
+        const sourceName = page.$?.src?.trim();
+        if (!sourceName) {
+            showToast('Set the Source field before importing a frame image.', 'warning');
+            return;
+        }
+
+        const result = await window.electronAPI.importPresentationAsset({
+            presentationPath: state.presentationPath,
+            kind: 'page-image',
+            sourceName,
+            imageFormat: pageImageFormat,
+            targetBaseName: `${sourceName}-${frameNumber}`,
+        });
+
+        if (result.success) {
+            setPreviewRefreshKey((value) => value + 1);
+            showToast(`Frame ${frameNumber} image imported.`, 'success');
+            return;
+        }
+
+        if (result.error !== 'Import canceled.') {
+            showToast(result.error, 'error');
+        }
+    };
+
     return (
         <div className='space-y-6'>
             <section className='space-y-4 rounded-box border border-base-300 bg-base-200 p-4'>
@@ -399,8 +472,11 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
                             />
                             <div className='flex flex-wrap gap-2'>
                                 {(pageType === 'image' || pageType === 'image-audio' || pageType === 'bundle') && (
-                                    <button type='button' className='btn btn-sm btn-outline' onClick={() => handleImportAsset('page-image')}>
-                                        Upload Page Image
+                                    <button
+                                        type='button'
+                                        className='btn btn-sm btn-outline'
+                                        onClick={() => handleImportAsset('page-image')}>
+                                        {pageType === 'bundle' ? 'Upload Main Frame Image' : 'Upload Page Image'}
                                     </button>
                                 )}
                                 {pageType === 'image-audio' && (
@@ -470,68 +546,95 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
                 </div>
             </section>
 
-            <SourcePreview
-                page={page}
-                pageType={pageType}
-                presentationPath={state.presentationPath}
-                imageFormat={pageImageFormat}
-                refreshKey={previewRefreshKey}
-            />
+            {!caps.supportsFrames && (
+                <SourcePreview
+                    page={page}
+                    pageType={pageType}
+                    presentationPath={state.presentationPath}
+                    imageFormat={pageImageFormat}
+                    refreshKey={previewRefreshKey}
+                />
+            )}
 
             {caps.supportsFrames && (
-                <ArraySection
-                    title='Frames'
-                    addLabel='Add Frame'
-                    onAdd={() =>
-                        replacePage({
-                            ...page,
-                            frame: sortFrames([...(page.frame ?? []), createEmptyFrame()]),
-                        })
-                    }>
-                    <div className='rounded-box border border-base-300 bg-base-100 px-3 py-2 text-sm opacity-80'>
-                        Frame 1 is the main source image. The frame entries below begin with Frame 2 and are kept in time order.
-                    </div>
-                    {sortFrames(page.frame ?? []).map((frame, index) => (
-                        <div key={`${frame.$?.start ?? 'frame'}-${index}`} className='space-y-3 rounded-box border border-base-300 bg-base-100 p-3'>
-                            <div className='flex flex-wrap items-center justify-between gap-3'>
-                                <div className='font-medium'>Frame {index + 2}</div>
-                                <div className='text-xs opacity-70'>
-                                    Image: <span className='font-mono'>{`${page.$?.src ?? 'source'}-${index + 1}.${pageImageFormat}`}</span>
-                                </div>
-                            </div>
-                            <div className='flex flex-wrap items-end gap-3'>
-                                <div className='flex-1 min-w-56'>
-                                    <Field
-                                        label='Start Time'
-                                        value={frame.$?.start ?? ''}
-                                        onChange={(value) => {
-                                            const frames = [...(page.frame ?? [])];
-                                            const sortedFrames = sortFrames(
-                                                frames.map((currentFrame) =>
-                                                    currentFrame === frame
-                                                        ? { ...currentFrame, $: updateAttrs(currentFrame.$, 'start', value) }
-                                                        : currentFrame
-                                                )
-                                            );
-                                            replacePage({ ...page, frame: sortedFrames });
-                                        }}
-                                    />
-                                </div>
-                                <button
-                                    type='button'
-                                    className='btn btn-sm btn-error btn-outline'
-                                    onClick={() =>
-                                        replacePage({
-                                            ...page,
-                                            frame: (page.frame ?? []).filter((currentFrame) => currentFrame !== frame),
-                                        })
-                                    }>
-                                    Remove Frame
-                                </button>
-                            </div>
+                <div className='grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]'>
+                    <SourcePreview
+                        page={page}
+                        pageType={pageType}
+                        presentationPath={state.presentationPath}
+                        imageFormat={pageImageFormat}
+                        refreshKey={previewRefreshKey}
+                    />
+                    <ArraySection
+                        title='Frames'
+                        addLabel='Add Frame'
+                        onAdd={() =>
+                            replacePage({
+                                ...page,
+                                frame: sortFrames([...(page.frame ?? []), createEmptyFrame()]),
+                            })
+                        }>
+                        <div className='rounded-box border border-base-300 bg-base-100 px-3 py-2 text-sm opacity-80'>
+                            The main source preview uses <span className='font-mono'>{`${page.$?.src ?? 'source'}-1.${pageImageFormat}`}</span>. Frame entries below start at <span className='font-mono'>{`${page.$?.src ?? 'source'}-2.${pageImageFormat}`}</span> and stay sorted by start time.
                         </div>
-                    ))}
-                </ArraySection>
+                        {sortFrames(page.frame ?? []).map((frame, index) => {
+                            const frameNumber = index + 2;
+                            const frameAssetPath = buildFramePreviewAssetPath(page.$?.src, state.presentationPath, pageImageFormat, frameNumber);
+
+                            return (
+                                <div key={`${frame.$?.start ?? 'frame'}-${index}`} className='space-y-3 rounded-box border border-base-300 bg-base-100 p-3'>
+                                    <div className='flex flex-wrap items-center justify-between gap-3'>
+                                        <div className='font-medium'>Frame {frameNumber}</div>
+                                        <div className='text-xs opacity-70'>
+                                            Image: <span className='font-mono'>{`${page.$?.src ?? 'source'}-${frameNumber}.${pageImageFormat}`}</span>
+                                        </div>
+                                    </div>
+                                    <div className='flex flex-wrap items-end gap-3'>
+                                        <FrameThumbnail
+                                            assetPath={frameAssetPath}
+                                            alt={`Frame ${frameNumber}`}
+                                            refreshKey={previewRefreshKey}
+                                        />
+                                        <div className='min-w-56 flex-1'>
+                                            <Field
+                                                label='Start Time'
+                                                value={frame.$?.start ?? ''}
+                                                onChange={(value) => {
+                                                    const frames = [...(page.frame ?? [])];
+                                                    const sortedFrames = sortFrames(
+                                                        frames.map((currentFrame) =>
+                                                            currentFrame === frame
+                                                                ? { ...currentFrame, $: updateAttrs(currentFrame.$, 'start', value) }
+                                                                : currentFrame
+                                                        )
+                                                    );
+                                                    replacePage({ ...page, frame: sortedFrames });
+                                                }}
+                                            />
+                                        </div>
+                                        <button
+                                            type='button'
+                                            className='btn btn-sm btn-outline'
+                                            onClick={() => handleImportFrameImage(frameNumber)}>
+                                            Import Image
+                                        </button>
+                                        <button
+                                            type='button'
+                                            className='btn btn-sm btn-error btn-outline'
+                                            onClick={() =>
+                                                replacePage({
+                                                    ...page,
+                                                    frame: (page.frame ?? []).filter((currentFrame) => currentFrame !== frame),
+                                                })
+                                            }>
+                                            Remove Frame
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </ArraySection>
+                </div>
             )}
 
             {caps.supportsNote && (
