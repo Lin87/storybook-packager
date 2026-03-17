@@ -729,6 +729,19 @@ function readAssetAsDataUrl(filePath: string): string {
     return `data:${mimeType};base64,${content.toString('base64')}`;
 }
 
+function removeManagedFilesByBaseName(directory: string, baseName: string) {
+    if (!fs.existsSync(directory)) return;
+
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+        if (!entry.isFile()) continue;
+
+        const parsed = path.parse(entry.name);
+        if (parsed.name === baseName) {
+            fs.unlinkSync(path.join(directory, entry.name));
+        }
+    }
+}
+
 async function importPresentationAsset(payload: ImportAssetPayload): Promise<string> {
     ensurePresentationFolders(payload.presentationPath);
 
@@ -741,20 +754,30 @@ async function importPresentationAsset(payload: ImportAssetPayload): Promise<str
 
     let filters: Electron.FileFilter[] = [];
     let targetPath = '';
+    let cleanupDirectory = '';
+    let cleanupBaseName = '';
 
     if (payload.kind === 'page-image') {
         const imageFormat = (payload.imageFormat || 'jpg').toLowerCase();
         filters = [{ name: `${imageFormat.toUpperCase()} image`, extensions: [imageFormat] }];
         targetPath = path.join(payload.presentationPath, 'assets', 'pages', `${targetBaseName}.${imageFormat}`);
+        cleanupDirectory = path.join(payload.presentationPath, 'assets', 'pages');
+        cleanupBaseName = targetBaseName;
     } else if (payload.kind === 'page-audio') {
         filters = [{ name: 'MP3 audio', extensions: ['mp3'] }];
         targetPath = path.join(payload.presentationPath, 'assets', 'audio', `${sourceName}.mp3`);
+        cleanupDirectory = path.join(payload.presentationPath, 'assets', 'audio');
+        cleanupBaseName = sourceName;
     } else if (payload.kind === 'bundle-audio') {
         filters = [{ name: 'MP3 audio', extensions: ['mp3'] }];
         targetPath = path.join(payload.presentationPath, 'assets', 'audio', `${sourceName}-bundled.mp3`);
+        cleanupDirectory = path.join(payload.presentationPath, 'assets', 'audio');
+        cleanupBaseName = `${sourceName}-bundled`;
     } else {
         filters = [{ name: 'MP4 video', extensions: ['mp4'] }];
         targetPath = path.join(payload.presentationPath, 'assets', 'video', `${sourceName}.mp4`);
+        cleanupDirectory = path.join(payload.presentationPath, 'assets', 'video');
+        cleanupBaseName = sourceName;
     }
 
     const result = await dialog.showOpenDialog({
@@ -767,6 +790,7 @@ async function importPresentationAsset(payload: ImportAssetPayload): Promise<str
         throw new Error('Import canceled.');
     }
 
+    removeManagedFilesByBaseName(cleanupDirectory, cleanupBaseName);
     fs.copyFileSync(result.filePaths[0], targetPath);
     return targetPath;
 }

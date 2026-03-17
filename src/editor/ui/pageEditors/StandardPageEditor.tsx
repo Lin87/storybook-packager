@@ -405,6 +405,7 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
     const [frameStartDrafts, setFrameStartDrafts] = useState<Record<number, string>>({});
     const [frameStartErrors, setFrameStartErrors] = useState<Record<number, string>>({});
     const [showAdditionalOptions, setShowAdditionalOptions] = useState(false);
+    const hasSource = Boolean(page?.$?.src?.trim());
 
     if (!page) return <div className='text-sm opacity-70'>Page not found.</div>;
 
@@ -574,22 +575,23 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
                                     <button
                                         type='button'
                                         className='btn btn-sm btn-outline'
-                                        onClick={() => handleImportAsset('page-image')}>
+                                        onClick={() => handleImportAsset('page-image')}
+                                        disabled={!hasSource}>
                                         {pageType === 'bundle' ? 'Upload Main Frame Image' : 'Upload Page Image'}
                                     </button>
                                 )}
                                 {pageType === 'image-audio' && (
-                                    <button type='button' className='btn btn-sm btn-outline' onClick={() => handleImportAsset('page-audio')}>
+                                    <button type='button' className='btn btn-sm btn-outline' onClick={() => handleImportAsset('page-audio')} disabled={!hasSource}>
                                         Upload Audio
                                     </button>
                                 )}
                                 {pageType === 'bundle' && (
-                                    <button type='button' className='btn btn-sm btn-outline' onClick={() => handleImportAsset('bundle-audio')}>
+                                    <button type='button' className='btn btn-sm btn-outline' onClick={() => handleImportAsset('bundle-audio')} disabled={!hasSource}>
                                         Upload Audio
                                     </button>
                                 )}
                                 {pageType === 'video' && (
-                                    <button type='button' className='btn btn-sm btn-outline' onClick={() => handleImportAsset('video')}>
+                                    <button type='button' className='btn btn-sm btn-outline' onClick={() => handleImportAsset('video')} disabled={!hasSource}>
                                         Upload Video
                                     </button>
                                 )}
@@ -717,7 +719,8 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
                                         <button
                                             type='button'
                                             className='btn btn-sm btn-outline'
-                                            onClick={() => handleImportFrameImage(frameNumber)}>
+                                            onClick={() => handleImportFrameImage(frameNumber)}
+                                            disabled={!hasSource}>
                                             Import Image
                                         </button>
                                         <button
