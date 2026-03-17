@@ -23,6 +23,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     close: () => ipcRenderer.send('window:close'),
     openEditorWindow: (presentationPath) => ipcRenderer.invoke('open-editor-window', presentationPath),
     loadPresentationData: (path) => ipcRenderer.invoke('load-presentation-data', path),
+    importPresentationAsset: (payload) => ipcRenderer.invoke('presentation:import-asset', payload),
+    getPresentationAssetDataUrl: (payload) => ipcRenderer.invoke('presentation:get-asset-data-url', payload),
     onMenuFileSave: (callback) => {
         const handler = async (_event, payload = {}) => {
             const requestId = payload.requestId;

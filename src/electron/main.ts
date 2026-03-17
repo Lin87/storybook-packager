@@ -441,6 +441,25 @@ function registerIpcHandlers() {
         }
     });
 
+    ipcMain.handle('presentation:import-asset', async (_event, payload: ImportAssetPayload) => {
+        try {
+            const importedPath = await importPresentationAsset(payload);
+            return { success: true, path: importedPath };
+        } catch (err: unknown) {
+            const error = err instanceof Error ? err : new Error(String(err));
+            return { success: false, error: error.message };
+        }
+    });
+
+    ipcMain.handle('presentation:get-asset-data-url', async (_event, payload: AssetDataPayload) => {
+        try {
+            return { success: true, dataUrl: readAssetAsDataUrl(payload.filePath) };
+        } catch (err: unknown) {
+            const error = err instanceof Error ? err : new Error(String(err));
+            return { success: false, error: error.message };
+        }
+    });
+
     ipcMain.on('editor:set-dirty', (event, dirty: boolean) => {
         windowDirty.set(event.sender.id, Boolean(dirty));
         buildAppMenu(); // re-evaluate enabled/disabled state
@@ -542,6 +561,17 @@ function makeRange(min: number, max: number): number[] {
 type SavePayload = {
     presentationPath: string;
     xml: StorybookXml;
+};
+
+type ImportAssetPayload = {
+    presentationPath: string;
+    kind: 'page-image' | 'page-audio' | 'bundle-audio' | 'video';
+    sourceName: string;
+    imageFormat?: string;
+};
+
+type AssetDataPayload = {
+    filePath: string;
 };
 
 type SaveResult = { success: true; path: string } | { success: false; error: string } | null;
@@ -673,6 +703,69 @@ function ensurePresentationFolders(basePath: string) {
 
     fs.mkdirSync(assetsPath, { recursive: true });
     subDirs.forEach((dir) => fs.mkdirSync(path.join(assetsPath, dir), { recursive: true }));
+}
+
+function readAssetAsDataUrl(filePath: string): string {
+    const content = fs.readFileSync(filePath);
+    const extension = path.extname(filePath).toLowerCase();
+    const mimeType =
+        extension === '.jpg' || extension === '.jpeg'
+            ? 'image/jpeg'
+            : extension === '.png'
+                ? 'image/png'
+                : extension === '.gif'
+                    ? 'image/gif'
+                    : extension === '.webp'
+                        ? 'image/webp'
+                        : extension === '.mp3'
+                            ? 'audio/mpeg'
+                            : extension === '.wav'
+                                ? 'audio/wav'
+                                : extension === '.mp4'
+                                    ? 'video/mp4'
+                                    : 'application/octet-stream';
+
+    return `data:${mimeType};base64,${content.toString('base64')}`;
+}
+
+async function importPresentationAsset(payload: ImportAssetPayload): Promise<string> {
+    ensurePresentationFolders(payload.presentationPath);
+
+    const sourceName = payload.sourceName.trim();
+    if (!sourceName) {
+        throw new Error('Enter a source name before importing an asset.');
+    }
+
+    let filters: Electron.FileFilter[] = [];
+    let targetPath = '';
+
+    if (payload.kind === 'page-image') {
+        const imageFormat = (payload.imageFormat || 'jpg').toLowerCase();
+        filters = [{ name: `${imageFormat.toUpperCase()} image`, extensions: [imageFormat] }];
+        targetPath = path.join(payload.presentationPath, 'assets', 'pages', `${sourceName}.${imageFormat}`);
+    } else if (payload.kind === 'page-audio') {
+        filters = [{ name: 'MP3 audio', extensions: ['mp3'] }];
+        targetPath = path.join(payload.presentationPath, 'assets', 'audio', `${sourceName}.mp3`);
+    } else if (payload.kind === 'bundle-audio') {
+        filters = [{ name: 'MP3 audio', extensions: ['mp3'] }];
+        targetPath = path.join(payload.presentationPath, 'assets', 'audio', `${sourceName}-bundled.mp3`);
+    } else {
+        filters = [{ name: 'MP4 video', extensions: ['mp4'] }];
+        targetPath = path.join(payload.presentationPath, 'assets', 'video', `${sourceName}.mp4`);
+    }
+
+    const result = await dialog.showOpenDialog({
+        title: 'Select a source file',
+        properties: ['openFile'],
+        filters,
+    });
+
+    if (result.canceled || result.filePaths.length === 0) {
+        throw new Error('Import canceled.');
+    }
+
+    fs.copyFileSync(result.filePaths[0], targetPath);
+    return targetPath;
 }
 
 function writePresentationXml(basePath: string, xml: StorybookXml) {

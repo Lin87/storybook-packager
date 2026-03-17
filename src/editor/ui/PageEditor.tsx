@@ -31,16 +31,5 @@ export default function PageEditorHost() {
         );
     }
 
-    return (
-        <div className='space-y-4'>
-            <div>
-                <h2 className='text-xl font-semibold'>{registration.label}</h2>
-                <div className='text-xs opacity-70'>
-                    Type: <span className='font-mono'>{type}</span>
-                </div>
-            </div>
-
-            <Editor sectionIndex={sIndex} pageIndex={pIndex} />
-        </div>
-    );
+    return <Editor sectionIndex={sIndex} pageIndex={pIndex} />;
 }

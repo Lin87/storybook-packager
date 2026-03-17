@@ -24,6 +24,17 @@ interface SaveAsRequest {
     saveAs: (document: SaveDocumentPayload) => Promise<SaveResult>;
 }
 
+interface ImportAssetPayload {
+    presentationPath: string;
+    kind: "page-image" | "page-audio" | "bundle-audio" | "video";
+    sourceName: string;
+    imageFormat?: string;
+}
+
+interface AssetDataPayload {
+    filePath: string;
+}
+
 declare global {
     interface Window {
         electronAPI: {
@@ -36,6 +47,8 @@ declare global {
             close: () => void;
             openEditorWindow: (presentationPath: string) => Promise<void>;
             loadPresentationData: (path: string) => Promise<{ success: true; data: StorybookXml } | { success: false; error: string }>;
+            importPresentationAsset: (payload: ImportAssetPayload) => Promise<{ success: true; path: string } | { success: false; error: string }>;
+            getPresentationAssetDataUrl: (payload: AssetDataPayload) => Promise<{ success: true; dataUrl: string } | { success: false; error: string }>;
             onMenuFileSave: (callback: (request: SaveRequest) => Promise<Exclude<SaveResult, null>> | Exclude<SaveResult, null>) => () => void;
             onMenuFileSaveAs: (callback: (request: SaveAsRequest) => Promise<SaveResult> | SaveResult) => () => void;
             setEditorDirty: (dirty: boolean) => void;

@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { showToast } from '@/app/utils/toast';
 import {
     createEmptyFrame,
     createEmptyMarker,
@@ -71,11 +72,239 @@ function ArraySection({ title, children, addLabel, onAdd }: { title: string; chi
     );
 }
 
+function AccordionSection({ title, children, defaultOpen = false }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
+    return (
+        <div className='collapse collapse-arrow rounded-box border border-base-300 bg-base-200'>
+            <input type='checkbox' defaultChecked={defaultOpen} />
+            <div className='collapse-title text-base font-semibold'>{title}</div>
+            <div className='collapse-content'>{children}</div>
+        </div>
+    );
+}
+
+function toFileUrl(path: string) {
+    const normalized = path.replace(/\\/g, '/');
+    const fileUrl = normalized.startsWith('/') ? `file://${normalized}` : `file:///${normalized}`;
+    return encodeURI(fileUrl);
+}
+
+function withExtension(source: string, extension: string) {
+    return /\.[a-z0-9]+$/i.test(source) ? source : `${source}.${extension}`;
+}
+
+function hasRemoteProtocol(source: string) {
+    return /^(https?:)?\/\//i.test(source);
+}
+
+function parseTimecode(value: string | undefined) {
+    if (!value) return Number.MAX_SAFE_INTEGER;
+    const parts = value.split(':').map((part) => Number.parseInt(part, 10));
+    if (parts.some((part) => Number.isNaN(part))) return Number.MAX_SAFE_INTEGER;
+    return parts.reduce((total, part) => total * 60 + part, 0);
+}
+
+function sortFrames<T extends { $?: { start?: string } }>(frames: T[]) {
+    return [...frames].sort((left, right) => parseTimecode(left.$?.start) - parseTimecode(right.$?.start));
+}
+
+function buildPreviewUrl(page: Page, pageType: SupportedPageType, presentationPath: string, imageFormat: string) {
+    const source = page.$?.src?.trim();
+    if (!source || !presentationPath) return null;
+
+    if (pageType === 'image' || pageType === 'image-audio' || pageType === 'bundle') {
+        return null;
+    }
+
+    if (pageType === 'video') {
+        return hasRemoteProtocol(source)
+            ? source
+            : toFileUrl(`${presentationPath}\\assets\\video\\${withExtension(source, 'mp4')}`);
+    }
+
+    if (pageType === 'youtube') {
+        return `https://www.youtube.com/embed/${source}`;
+    }
+
+    if (pageType === 'html') {
+        return hasRemoteProtocol(source)
+            ? source
+            : toFileUrl(`${presentationPath}\\assets\\html\\${withExtension(source, 'html')}`);
+    }
+
+    return null;
+}
+
+function buildImagePreviewAssetPath(page: Page, presentationPath: string, imageFormat: string) {
+    const source = page.$?.src?.trim();
+    if (!source || !presentationPath) return null;
+    const imageName = withExtension(source, imageFormat || 'jpg');
+    return `${presentationPath}\\assets\\pages\\${imageName}`;
+}
+
+function buildAudioPreviewAssetPath(page: Page, pageType: SupportedPageType, presentationPath: string) {
+    const source = page.$?.src?.trim();
+    if (!source || !presentationPath || (pageType !== 'image-audio' && pageType !== 'bundle')) {
+        return null;
+    }
+
+    const audioName = pageType === 'bundle' ? `${source}-bundled.mp3` : `${source}.mp3`;
+    return `${presentationPath}\\assets\\audio\\${audioName}`;
+}
+
+function SourcePreview({ page, pageType, presentationPath, imageFormat, refreshKey }: { page: Page; pageType: SupportedPageType; presentationPath: string; imageFormat: string; refreshKey: number }) {
+    const previewUrl = buildPreviewUrl(page, pageType, presentationPath, imageFormat);
+    const imageAssetPath = buildImagePreviewAssetPath(page, presentationPath, imageFormat);
+    const audioAssetPath = buildAudioPreviewAssetPath(page, pageType, presentationPath);
+    const source = page.$?.src?.trim();
+    const [imageFailed, setImageFailed] = useState(false);
+    const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
+    const [audioDataUrl, setAudioDataUrl] = useState<string | null>(null);
+    const previewSrc = previewUrl ? `${previewUrl}${previewUrl.includes('?') ? '&' : '?'}v=${refreshKey}` : imageDataUrl;
+    const audioPreviewSrc = audioDataUrl;
+
+    useEffect(() => {
+        setImageFailed(false);
+    }, [previewUrl, refreshKey, imageAssetPath]);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        if (pageType === 'image' || pageType === 'image-audio' || pageType === 'bundle') {
+            if (!imageAssetPath) {
+                setImageDataUrl(null);
+                return;
+            }
+
+            window.electronAPI.getPresentationAssetDataUrl({ filePath: imageAssetPath }).then((result) => {
+                if (cancelled) return;
+                if (result.success) {
+                    setImageDataUrl(result.dataUrl);
+                    setImageFailed(false);
+                } else {
+                    setImageDataUrl(null);
+                    setImageFailed(true);
+                }
+            });
+        }
+
+        return () => {
+            cancelled = true;
+        };
+    }, [imageAssetPath, pageType, refreshKey]);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        if (pageType === 'image-audio' || pageType === 'bundle') {
+            if (!audioAssetPath) {
+                setAudioDataUrl(null);
+                return;
+            }
+
+            window.electronAPI.getPresentationAssetDataUrl({ filePath: audioAssetPath }).then((result) => {
+                if (cancelled) return;
+                if (result.success) {
+                    setAudioDataUrl(result.dataUrl);
+                } else {
+                    setAudioDataUrl(null);
+                }
+            });
+        } else {
+            setAudioDataUrl(null);
+        }
+
+        return () => {
+            cancelled = true;
+        };
+    }, [audioAssetPath, pageType, refreshKey]);
+
+    if (!source) {
+        return (
+            <section className='rounded-box border border-base-300 bg-base-200 p-4'>
+                <h3 className='mb-2 text-base font-semibold'>Source Preview</h3>
+                <p className='text-sm opacity-70'>Add a source to preview this page.</p>
+            </section>
+        );
+    }
+
+    if (pageType === 'image' || pageType === 'image-audio' || pageType === 'bundle') {
+        return (
+            <section className='space-y-3 rounded-box border border-base-300 bg-base-200 p-4'>
+                <h3 className='text-base font-semibold'>Source Preview</h3>
+                {previewSrc && !imageFailed ? (
+                    <img
+                        key={previewSrc}
+                        src={previewSrc}
+                        alt={page.$?.title ?? source}
+                        className='max-h-80 w-full rounded-box border border-base-300 object-contain bg-base-100'
+                        onError={() => setImageFailed(true)}
+                        onLoad={() => setImageFailed(false)}
+                    />
+                ) : (
+                    <div className='flex h-56 items-center justify-center rounded-box border border-dashed border-base-300 bg-base-100 text-sm opacity-70'>
+                        Image preview unavailable. Upload a matching page image to `assets/pages`.
+                    </div>
+                )}
+                {(pageType === 'image-audio' || pageType === 'bundle') && audioPreviewSrc && (
+                    <div className='space-y-2'>
+                        <div className='text-sm font-medium'>Audio Preview</div>
+                        <audio controls className='w-full' src={audioPreviewSrc} />
+                    </div>
+                )}
+                <div className='text-xs opacity-70'>{source}</div>
+            </section>
+        );
+    }
+
+    if (pageType === 'video') {
+        return (
+            <section className='space-y-3 rounded-box border border-base-300 bg-base-200 p-4'>
+                <h3 className='text-base font-semibold'>Source Preview</h3>
+                {previewUrl ? (
+                    <video controls className='max-h-80 w-full rounded-box border border-base-300 bg-black' src={previewUrl} />
+                ) : (
+                    <p className='text-sm opacity-70'>Preview unavailable for this source.</p>
+                )}
+                <div className='text-xs opacity-70'>{source}</div>
+            </section>
+        );
+    }
+
+    if (pageType === 'youtube' || pageType === 'html') {
+        return (
+            <section className='space-y-3 rounded-box border border-base-300 bg-base-200 p-4'>
+                <h3 className='text-base font-semibold'>Source Preview</h3>
+                {previewUrl ? (
+                    <iframe
+                        title={`${pageType}-preview`}
+                        src={previewUrl}
+                        className='h-80 w-full rounded-box border border-base-300 bg-base-100'
+                        allow='autoplay; encrypted-media; picture-in-picture'
+                    />
+                ) : (
+                    <p className='text-sm opacity-70'>Preview unavailable for this source.</p>
+                )}
+                <div className='text-xs opacity-70'>{source}</div>
+            </section>
+        );
+    }
+
+    return (
+        <section className='space-y-2 rounded-box border border-base-300 bg-base-200 p-4'>
+            <h3 className='text-base font-semibold'>Source Preview</h3>
+            <p className='text-sm opacity-70'>Live preview is not available for this provider yet.</p>
+            <div className='rounded-box border border-base-300 bg-base-100 px-3 py-2 font-mono text-xs'>{source}</div>
+        </section>
+    );
+}
+
 export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEditorProps) {
-    const { dispatch, page } = usePageEditorState(sectionIndex, pageIndex);
+    const { dispatch, page, state } = usePageEditorState(sectionIndex, pageIndex);
 
     const pageType = useMemo(() => (page ? getPageType(page) : 'image'), [page]);
     const caps = useMemo(() => getPageCapabilities(pageType), [pageType]);
+    const pageImageFormat = state.xml?.storybook.$?.pageImgFormat ?? 'jpg';
+    const [previewRefreshKey, setPreviewRefreshKey] = useState(0);
 
     if (!page) return <div className='text-sm opacity-70'>Page not found.</div>;
 
@@ -98,6 +327,31 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
             type: 'updatePageField',
             payload: { sectionIndex, pageIndex, field, value },
         });
+    };
+
+    const handleImportAsset = async (kind: 'page-image' | 'page-audio' | 'bundle-audio' | 'video') => {
+        const sourceName = page.$?.src?.trim();
+        if (!sourceName) {
+            showToast('Set the Source field before importing an asset.', 'warning');
+            return;
+        }
+
+        const result = await window.electronAPI.importPresentationAsset({
+            presentationPath: state.presentationPath,
+            kind,
+            sourceName,
+            imageFormat: pageImageFormat,
+        });
+
+        if (result.success) {
+            setPreviewRefreshKey((value) => value + 1);
+            showToast('Asset imported.', 'success');
+            return;
+        }
+
+        if (result.error !== 'Import canceled.') {
+            showToast(result.error, 'error');
+        }
     };
 
     return (
@@ -136,12 +390,36 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
 
                 <div className='grid gap-4 md:grid-cols-2'>
                     {caps.supportsSrc && (
-                        <Field
-                            label='Source'
-                            value={page.$?.src ?? ''}
-                            onChange={(value) => updateAttr('src', value || undefined)}
-                            placeholder='Asset name or external ID'
-                        />
+                        <div className='space-y-2'>
+                            <Field
+                                label='Source'
+                                value={page.$?.src ?? ''}
+                                onChange={(value) => updateAttr('src', value || undefined)}
+                                placeholder='Asset name or external ID'
+                            />
+                            <div className='flex flex-wrap gap-2'>
+                                {(pageType === 'image' || pageType === 'image-audio' || pageType === 'bundle') && (
+                                    <button type='button' className='btn btn-sm btn-outline' onClick={() => handleImportAsset('page-image')}>
+                                        Upload Page Image
+                                    </button>
+                                )}
+                                {pageType === 'image-audio' && (
+                                    <button type='button' className='btn btn-sm btn-outline' onClick={() => handleImportAsset('page-audio')}>
+                                        Upload Audio
+                                    </button>
+                                )}
+                                {pageType === 'bundle' && (
+                                    <button type='button' className='btn btn-sm btn-outline' onClick={() => handleImportAsset('bundle-audio')}>
+                                        Upload Audio
+                                    </button>
+                                )}
+                                {pageType === 'video' && (
+                                    <button type='button' className='btn btn-sm btn-outline' onClick={() => handleImportAsset('video')}>
+                                        Upload Video
+                                    </button>
+                                )}
+                            </div>
+                        </div>
                     )}
 
                     {caps.supportsTransition && (
@@ -192,6 +470,70 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
                 </div>
             </section>
 
+            <SourcePreview
+                page={page}
+                pageType={pageType}
+                presentationPath={state.presentationPath}
+                imageFormat={pageImageFormat}
+                refreshKey={previewRefreshKey}
+            />
+
+            {caps.supportsFrames && (
+                <ArraySection
+                    title='Frames'
+                    addLabel='Add Frame'
+                    onAdd={() =>
+                        replacePage({
+                            ...page,
+                            frame: sortFrames([...(page.frame ?? []), createEmptyFrame()]),
+                        })
+                    }>
+                    <div className='rounded-box border border-base-300 bg-base-100 px-3 py-2 text-sm opacity-80'>
+                        Frame 1 is the main source image. The frame entries below begin with Frame 2 and are kept in time order.
+                    </div>
+                    {sortFrames(page.frame ?? []).map((frame, index) => (
+                        <div key={`${frame.$?.start ?? 'frame'}-${index}`} className='space-y-3 rounded-box border border-base-300 bg-base-100 p-3'>
+                            <div className='flex flex-wrap items-center justify-between gap-3'>
+                                <div className='font-medium'>Frame {index + 2}</div>
+                                <div className='text-xs opacity-70'>
+                                    Image: <span className='font-mono'>{`${page.$?.src ?? 'source'}-${index + 1}.${pageImageFormat}`}</span>
+                                </div>
+                            </div>
+                            <div className='flex flex-wrap items-end gap-3'>
+                                <div className='flex-1 min-w-56'>
+                                    <Field
+                                        label='Start Time'
+                                        value={frame.$?.start ?? ''}
+                                        onChange={(value) => {
+                                            const frames = [...(page.frame ?? [])];
+                                            const sortedFrames = sortFrames(
+                                                frames.map((currentFrame) =>
+                                                    currentFrame === frame
+                                                        ? { ...currentFrame, $: updateAttrs(currentFrame.$, 'start', value) }
+                                                        : currentFrame
+                                                )
+                                            );
+                                            replacePage({ ...page, frame: sortedFrames });
+                                        }}
+                                    />
+                                </div>
+                                <button
+                                    type='button'
+                                    className='btn btn-sm btn-error btn-outline'
+                                    onClick={() =>
+                                        replacePage({
+                                            ...page,
+                                            frame: (page.frame ?? []).filter((currentFrame) => currentFrame !== frame),
+                                        })
+                                    }>
+                                    Remove Frame
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </ArraySection>
+            )}
+
             {caps.supportsNote && (
                 <RichTextEditor
                     label='Note'
@@ -201,157 +543,136 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
             )}
 
             {caps.supportsDescription && (
-                <RichTextEditor
-                    label='Description'
-                    value={page.description ?? ''}
-                    onChange={(value) => updateField('description', value || undefined)}
-                />
+                <AccordionSection title='Description'>
+                    <RichTextEditor
+                        label='Description'
+                        value={page.description ?? ''}
+                        onChange={(value) => updateField('description', value || undefined)}
+                    />
+                </AccordionSection>
             )}
 
             {caps.supportsCopyableContent && (
-                <TextBlock
-                    label='Copyable Content'
-                    rows={4}
-                    value={page.copyableContent ?? ''}
-                    onChange={(value) => updateField('copyableContent', value || undefined)}
-                />
+                <AccordionSection title='Copyable Content'>
+                    <TextBlock
+                        label='Copyable Content'
+                        rows={4}
+                        value={page.copyableContent ?? ''}
+                        onChange={(value) => updateField('copyableContent', value || undefined)}
+                    />
+                </AccordionSection>
             )}
 
             {caps.supportsMarkers && (
-                <ArraySection
-                    title='Markers'
-                    addLabel='Add Marker'
-                    onAdd={() =>
-                        replacePage({
-                            ...page,
-                            markers: {
-                                marker: [...(page.markers?.marker ?? []), createEmptyMarker()],
-                            },
-                        })
-                    }>
-                    {(page.markers?.marker ?? []).map((marker, index) => (
-                        <div key={index} className='space-y-3 rounded-box border border-base-300 bg-base-100 p-3'>
-                            <div className='grid gap-3 md:grid-cols-2'>
-                                <Field
-                                    label='Timecode'
-                                    value={marker.$?.timecode ?? ''}
+                <AccordionSection title='Markers'>
+                    <ArraySection
+                        title='Markers'
+                        addLabel='Add Marker'
+                        onAdd={() =>
+                            replacePage({
+                                ...page,
+                                markers: {
+                                    marker: [...(page.markers?.marker ?? []), createEmptyMarker()],
+                                },
+                            })
+                        }>
+                        {(page.markers?.marker ?? []).map((marker, index) => (
+                            <div key={index} className='space-y-3 rounded-box border border-base-300 bg-base-100 p-3'>
+                                <div className='grid gap-3 md:grid-cols-2'>
+                                    <Field
+                                        label='Timecode'
+                                        value={marker.$?.timecode ?? ''}
+                                        onChange={(value) => {
+                                            const markers = [...(page.markers?.marker ?? [])];
+                                            markers[index] = { ...marker, $: updateAttrs(marker.$, 'timecode', value) };
+                                            replacePage({ ...page, markers: { marker: markers } });
+                                        }}
+                                    />
+                                    <Field
+                                        label='Color'
+                                        value={marker.$?.color ?? ''}
+                                        onChange={(value) => {
+                                            const markers = [...(page.markers?.marker ?? [])];
+                                            markers[index] = { ...marker, $: updateAttrs(marker.$, 'color', value) };
+                                            replacePage({ ...page, markers: { marker: markers } });
+                                        }}
+                                    />
+                                </div>
+                                <TextBlock
+                                    label='Label'
+                                    value={marker._ ?? ''}
+                                    rows={2}
                                     onChange={(value) => {
                                         const markers = [...(page.markers?.marker ?? [])];
-                                        markers[index] = { ...marker, $: updateAttrs(marker.$, 'timecode', value) };
+                                        markers[index] = { ...marker, _: value };
                                         replacePage({ ...page, markers: { marker: markers } });
                                     }}
                                 />
-                                <Field
-                                    label='Color'
-                                    value={marker.$?.color ?? ''}
-                                    onChange={(value) => {
-                                        const markers = [...(page.markers?.marker ?? [])];
-                                        markers[index] = { ...marker, $: updateAttrs(marker.$, 'color', value) };
-                                        replacePage({ ...page, markers: { marker: markers } });
-                                    }}
-                                />
+                                <button
+                                    type='button'
+                                    className='btn btn-sm btn-error btn-outline'
+                                    onClick={() => replacePage({ ...page, markers: { marker: (page.markers?.marker ?? []).filter((_, currentIndex) => currentIndex !== index) } })}>
+                                    Remove Marker
+                                </button>
                             </div>
-                            <TextBlock
-                                label='Label'
-                                value={marker._ ?? ''}
-                                rows={2}
-                                onChange={(value) => {
-                                    const markers = [...(page.markers?.marker ?? [])];
-                                    markers[index] = { ...marker, _: value };
-                                    replacePage({ ...page, markers: { marker: markers } });
-                                }}
-                            />
-                            <button
-                                type='button'
-                                className='btn btn-sm btn-error btn-outline'
-                                onClick={() => replacePage({ ...page, markers: { marker: (page.markers?.marker ?? []).filter((_, currentIndex) => currentIndex !== index) } })}>
-                                Remove Marker
-                            </button>
-                        </div>
-                    ))}
-                </ArraySection>
+                        ))}
+                    </ArraySection>
+                </AccordionSection>
             )}
 
             {caps.supportsWidget && (
-                <ArraySection
-                    title='Widget Segments'
-                    addLabel='Add Segment'
-                    onAdd={() =>
-                        replacePage({
-                            ...page,
-                            widget: {
-                                ...(page.widget ?? {}),
-                                segment: [...(page.widget?.segment ?? []), createEmptySegment()],
-                            },
-                        })
-                    }>
-                    {(page.widget?.segment ?? []).map((segment, index) => (
-                        <div key={index} className='space-y-3 rounded-box border border-base-300 bg-base-100 p-3'>
-                            <Field
-                                label='Segment Name'
-                                value={segment.$?.name ?? ''}
-                                onChange={(value) => {
-                                    const segments = [...(page.widget?.segment ?? [])];
-                                    segments[index] = { ...segment, $: updateAttrs(segment.$, 'name', value) };
-                                    replacePage({ ...page, widget: { ...(page.widget ?? {}), segment: segments } });
-                                }}
-                            />
-                            <RichTextEditor
-                                label='Segment Content'
-                                value={segment._ ?? ''}
-                                onChange={(value) => {
-                                    const segments = [...(page.widget?.segment ?? [])];
-                                    segments[index] = { ...segment, _: value };
-                                    replacePage({ ...page, widget: { ...(page.widget ?? {}), segment: segments } });
-                                }}
-                                minHeightClassName='min-h-24'
-                            />
-                            <button
-                                type='button'
-                                className='btn btn-sm btn-error btn-outline'
-                                onClick={() =>
-                                    replacePage({
-                                        ...page,
-                                        widget: {
-                                            ...(page.widget ?? {}),
-                                            segment: (page.widget?.segment ?? []).filter((_, currentIndex) => currentIndex !== index),
-                                        },
-                                    })
-                                }>
-                                Remove Segment
-                            </button>
-                        </div>
-                    ))}
-                </ArraySection>
-            )}
-
-            {caps.supportsFrames && (
-                <ArraySection
-                    title='Frames'
-                    addLabel='Add Frame'
-                    onAdd={() => replacePage({ ...page, frame: [...(page.frame ?? []), createEmptyFrame()] })}>
-                    {(page.frame ?? []).map((frame, index) => (
-                        <div key={index} className='flex flex-wrap items-end gap-3 rounded-box border border-base-300 bg-base-100 p-3'>
-                            <div className='flex-1 min-w-56'>
+                <AccordionSection title='Widget Segments'>
+                    <ArraySection
+                        title='Widget Segments'
+                        addLabel='Add Segment'
+                        onAdd={() =>
+                            replacePage({
+                                ...page,
+                                widget: {
+                                    ...(page.widget ?? {}),
+                                    segment: [...(page.widget?.segment ?? []), createEmptySegment()],
+                                },
+                            })
+                        }>
+                        {(page.widget?.segment ?? []).map((segment, index) => (
+                            <div key={index} className='space-y-3 rounded-box border border-base-300 bg-base-100 p-3'>
                                 <Field
-                                    label='Start Time'
-                                    value={frame.$?.start ?? ''}
+                                    label='Segment Name'
+                                    value={segment.$?.name ?? ''}
                                     onChange={(value) => {
-                                        const frames = [...(page.frame ?? [])];
-                                        frames[index] = { ...frame, $: updateAttrs(frame.$, 'start', value) };
-                                        replacePage({ ...page, frame: frames });
+                                        const segments = [...(page.widget?.segment ?? [])];
+                                        segments[index] = { ...segment, $: updateAttrs(segment.$, 'name', value) };
+                                        replacePage({ ...page, widget: { ...(page.widget ?? {}), segment: segments } });
                                     }}
                                 />
+                                <RichTextEditor
+                                    label='Segment Content'
+                                    value={segment._ ?? ''}
+                                    onChange={(value) => {
+                                        const segments = [...(page.widget?.segment ?? [])];
+                                        segments[index] = { ...segment, _: value };
+                                        replacePage({ ...page, widget: { ...(page.widget ?? {}), segment: segments } });
+                                    }}
+                                    minHeightClassName='min-h-24'
+                                />
+                                <button
+                                    type='button'
+                                    className='btn btn-sm btn-error btn-outline'
+                                    onClick={() =>
+                                        replacePage({
+                                            ...page,
+                                            widget: {
+                                                ...(page.widget ?? {}),
+                                                segment: (page.widget?.segment ?? []).filter((_, currentIndex) => currentIndex !== index),
+                                            },
+                                        })
+                                    }>
+                                    Remove Segment
+                                </button>
                             </div>
-                            <button
-                                type='button'
-                                className='btn btn-sm btn-error btn-outline'
-                                onClick={() => replacePage({ ...page, frame: (page.frame ?? []).filter((_, currentIndex) => currentIndex !== index) })}>
-                                Remove Frame
-                            </button>
-                        </div>
-                    ))}
-                </ArraySection>
+                        ))}
+                    </ArraySection>
+                </AccordionSection>
             )}
 
             {caps.supportsAudio && (
