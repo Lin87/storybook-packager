@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type Ref } from 'react';
 import { showToast } from '@/app/utils/toast';
 import {
     createEmptyFrame,
@@ -31,11 +31,32 @@ function updateAttrs(attrs: XmlAttributes | undefined, field: string, value: str
     return nextAttrs;
 }
 
-function Field({ label, value, onChange, placeholder = '' }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string }) {
+function Field({
+    label,
+    value,
+    onChange,
+    placeholder = '',
+    onBlur,
+    inputRef,
+}: {
+    label: string;
+    value: string;
+    onChange: (value: string) => void;
+    placeholder?: string;
+    onBlur?: () => void;
+    inputRef?: Ref<HTMLInputElement>;
+}) {
     return (
         <label className='floating-label'>
             <span>{label}</span>
-            <input className='input input-md w-full' value={value} placeholder={placeholder || label} onChange={(event) => onChange(event.target.value)} />
+            <input
+                className='input input-md w-full'
+                value={value}
+                placeholder={placeholder || label}
+                onChange={(event) => onChange(event.target.value)}
+                onBlur={onBlur}
+                ref={inputRef}
+            />
         </label>
     );
 }
@@ -103,8 +124,35 @@ function parseTimecode(value: string | undefined) {
     return parts.reduce((total, part) => total * 60 + part, 0);
 }
 
-function sortFrames<T extends { $?: { start?: string } }>(frames: T[]) {
-    return [...frames].sort((left, right) => parseTimecode(left.$?.start) - parseTimecode(right.$?.start));
+function getFrameTimeError(frames: NonNullable<Page['frame']>, index: number, value: string) {
+    if (!value.trim()) return '';
+
+    const currentTime = parseTimecode(value);
+    if (currentTime === Number.MAX_SAFE_INTEGER) {
+        return 'Enter time as mm:ss or hh:mm:ss.';
+    }
+
+    if (index > 0) {
+        const previousValue = frames[index - 1]?.$?.start;
+        if (previousValue) {
+            const previousTime = parseTimecode(previousValue);
+            if (currentTime < previousTime) {
+                return `Start time cannot be before Frame ${index + 1}.`;
+            }
+        }
+    }
+
+    if (index < frames.length - 1) {
+        const nextValue = frames[index + 1]?.$?.start;
+        if (nextValue) {
+            const nextTime = parseTimecode(nextValue);
+            if (currentTime > nextTime) {
+                return `Start time cannot be after Frame ${index + 3}.`;
+            }
+        }
+    }
+
+    return '';
 }
 
 function buildPreviewUrl(page: Page, pageType: SupportedPageType, presentationPath: string, imageFormat: string) {
@@ -352,8 +400,28 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
     const caps = useMemo(() => getPageCapabilities(pageType), [pageType]);
     const pageImageFormat = state.xml?.storybook.$?.pageImgFormat ?? 'jpg';
     const [previewRefreshKey, setPreviewRefreshKey] = useState(0);
+    const [pendingFrameFocusIndex, setPendingFrameFocusIndex] = useState<number | null>(null);
+    const frameInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
+    const [frameStartDrafts, setFrameStartDrafts] = useState<Record<number, string>>({});
+    const [frameStartErrors, setFrameStartErrors] = useState<Record<number, string>>({});
 
     if (!page) return <div className='text-sm opacity-70'>Page not found.</div>;
+
+    useEffect(() => {
+        if (pendingFrameFocusIndex === null) return;
+
+        const input = frameInputRefs.current[pendingFrameFocusIndex];
+        if (input) {
+            input.focus();
+            input.select();
+            setPendingFrameFocusIndex(null);
+        }
+    }, [page?.frame, pendingFrameFocusIndex]);
+
+    useEffect(() => {
+        setFrameStartDrafts({});
+        setFrameStartErrors({});
+    }, [sectionIndex, pageIndex]);
 
     const replacePage = (nextPage: Page) => {
         dispatch({
@@ -373,6 +441,36 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
         dispatch({
             type: 'updatePageField',
             payload: { sectionIndex, pageIndex, field, value },
+        });
+    };
+
+    const commitFrameStartTime = (index: number) => {
+        const draftValue = frameStartDrafts[index];
+        if (draftValue === undefined) return;
+
+        const frames = [...(page.frame ?? [])];
+        const error = getFrameTimeError(frames, index, draftValue);
+
+        if (error) {
+            setFrameStartErrors((current) => ({ ...current, [index]: error }));
+            return;
+        }
+
+        frames[index] = {
+            ...frames[index],
+            $: updateAttrs(frames[index]?.$, 'start', draftValue),
+        };
+
+        replacePage({ ...page, frame: frames });
+        setFrameStartDrafts((current) => {
+            const next = { ...current };
+            delete next[index];
+            return next;
+        });
+        setFrameStartErrors((current) => {
+            const next = { ...current };
+            delete next[index];
+            return next;
         });
     };
 
@@ -568,21 +666,23 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
                     <ArraySection
                         title='Frames'
                         addLabel='Add Frame'
-                        onAdd={() =>
+                        onAdd={() => {
+                            const nextFrames = [...(page.frame ?? []), createEmptyFrame()];
+                            setPendingFrameFocusIndex(nextFrames.length - 1);
                             replacePage({
                                 ...page,
-                                frame: sortFrames([...(page.frame ?? []), createEmptyFrame()]),
-                            })
-                        }>
+                                frame: nextFrames,
+                            });
+                        }}>
                         <div className='rounded-box border border-base-300 bg-base-100 px-3 py-2 text-sm opacity-80'>
                             The main source preview uses <span className='font-mono'>{`${page.$?.src ?? 'source'}-1.${pageImageFormat}`}</span>. Frame entries below start at <span className='font-mono'>{`${page.$?.src ?? 'source'}-2.${pageImageFormat}`}</span> and stay sorted by start time.
                         </div>
-                        {sortFrames(page.frame ?? []).map((frame, index) => {
+                        {(page.frame ?? []).map((frame, index) => {
                             const frameNumber = index + 2;
                             const frameAssetPath = buildFramePreviewAssetPath(page.$?.src, state.presentationPath, pageImageFormat, frameNumber);
 
                             return (
-                                <div key={`${frame.$?.start ?? 'frame'}-${index}`} className='space-y-3 rounded-box border border-base-300 bg-base-100 p-3'>
+                                <div key={`frame-${index}`} className='space-y-3 rounded-box border border-base-300 bg-base-100 p-3'>
                                     <div className='flex flex-wrap items-center justify-between gap-3'>
                                         <div className='font-medium'>Frame {frameNumber}</div>
                                         <div className='text-xs opacity-70'>
@@ -598,19 +698,20 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
                                         <div className='min-w-56 flex-1'>
                                             <Field
                                                 label='Start Time'
-                                                value={frame.$?.start ?? ''}
+                                                value={frameStartDrafts[index] ?? frame.$?.start ?? ''}
                                                 onChange={(value) => {
-                                                    const frames = [...(page.frame ?? [])];
-                                                    const sortedFrames = sortFrames(
-                                                        frames.map((currentFrame) =>
-                                                            currentFrame === frame
-                                                                ? { ...currentFrame, $: updateAttrs(currentFrame.$, 'start', value) }
-                                                                : currentFrame
-                                                        )
-                                                    );
-                                                    replacePage({ ...page, frame: sortedFrames });
+                                                    setFrameStartDrafts((current) => ({ ...current, [index]: value }));
+                                                    setFrameStartErrors((current) => ({
+                                                        ...current,
+                                                        [index]: getFrameTimeError([...(page.frame ?? [])], index, value),
+                                                    }));
+                                                }}
+                                                onBlur={() => commitFrameStartTime(index)}
+                                                inputRef={(element) => {
+                                                    frameInputRefs.current[index] = element;
                                                 }}
                                             />
+                                            {frameStartErrors[index] && <div className='mt-1 text-xs text-error'>{frameStartErrors[index]}</div>}
                                         </div>
                                         <button
                                             type='button'
@@ -624,7 +725,7 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
                                             onClick={() =>
                                                 replacePage({
                                                     ...page,
-                                                    frame: (page.frame ?? []).filter((currentFrame) => currentFrame !== frame),
+                                                    frame: (page.frame ?? []).filter((_, currentIndex) => currentIndex !== index),
                                                 })
                                             }>
                                             Remove Frame
