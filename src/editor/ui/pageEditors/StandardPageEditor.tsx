@@ -763,8 +763,9 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
                         <div className='space-y-4'>
                             {caps.supportsDescription && (
                                 <AccordionSection title='Description'>
-                                    <RichTextEditor
+                                    <TextBlock
                                         label='Description'
+                                        rows={4}
                                         value={page.description ?? ''}
                                         onChange={(value) => updateField('description', value || undefined)}
                                     />
