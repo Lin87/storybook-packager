@@ -38,22 +38,56 @@ pre {
     background-size: 40px 40px;
 }
 
-.tiptap-editor p {
-    margin: 0 0 0.75rem;
+html.dark,
+body.dark {
+    --tt-dropdown-menu-bg-color: var(--tt-gray-dark-50);
+    --tt-dropdown-menu-text-color: var(--tt-gray-dark-a-600);
+    --tt-dropdown-menu-label-color: var(--tt-gray-dark-a-800);
+    --tt-popover-border-color: var(--tt-gray-dark-a-50);
+    --tt-popover-bg-color: var(--tt-gray-dark-50);
+    --tt-popover-text-color: var(--tt-gray-dark-a-600);
 }
 
-.tiptap-editor p:last-child {
+.rich-text-editor .simple-editor-embedded {
+    display: flex;
+    flex-direction: column;
+}
+
+.rich-text-editor .simple-editor-content {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.rich-text-editor .simple-editor-content .tiptap.ProseMirror.simple-editor {
+    flex: 1;
+    padding: 0.875rem 1rem;
+    font-family: var(--font-poppins-sans);
+}
+
+.rich-text-editor .simple-editor-content .tiptap.ProseMirror.simple-editor > :first-child {
+    margin-top: 0;
+}
+
+.rich-text-editor .simple-editor-content .tiptap.ProseMirror.simple-editor > :last-child {
     margin-bottom: 0;
 }
 
-.tiptap-editor ul,
-.tiptap-editor ol {
-    margin: 0 0 0.75rem;
-    padding-left: 1.5rem;
+.rich-text-editor .simple-editor-content .tiptap.ProseMirror.simple-editor h5,
+.rich-text-editor .simple-editor-content .tiptap.ProseMirror.simple-editor h6 {
+    position: relative;
+    color: inherit;
+    font-style: inherit;
 }
 
-.tiptap-editor h2 {
-    margin: 0 0 0.75rem;
-    font-size: 1.125rem;
+.rich-text-editor .simple-editor-content .tiptap.ProseMirror.simple-editor h5 {
+    font-size: 0.95em;
     font-weight: 600;
+    margin-top: 1.75em;
+}
+
+.rich-text-editor .simple-editor-content .tiptap.ProseMirror.simple-editor h6 {
+    font-size: 0.875em;
+    font-weight: 600;
+    margin-top: 1.5em;
 }

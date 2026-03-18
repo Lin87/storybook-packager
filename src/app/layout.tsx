@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { DM_Mono, Poppins } from "next/font/google";
+import SystemThemeSync from "./SystemThemeSync";
 import "./globals.css";
+import "./tiptap-globals.scss";
 
 const poppins = Poppins({
     variable: "--font-poppins-sans",
@@ -29,6 +31,7 @@ export default function RootLayout({
     return (
         <html lang="en">
             <body className={`${poppins.variable} ${dmMono.variable} antialiased border-t border-base-300`}>
+                <SystemThemeSync />
                 <div className="toast toast-center toast-bottom z-50" id="global-toast"></div>
                 {children}
             </body>
