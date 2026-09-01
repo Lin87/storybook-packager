@@ -155,7 +155,7 @@ function getFrameTimeError(frames: NonNullable<Page['frame']>, index: number, va
     return '';
 }
 
-function buildPreviewUrl(page: Page, pageType: SupportedPageType, presentationPath: string, imageFormat: string) {
+function buildPreviewUrl(page: Page, pageType: SupportedPageType, presentationPath: string) {
     const source = page.$?.src?.trim();
     if (!source || !presentationPath) return null;
 
@@ -207,7 +207,7 @@ function buildAudioPreviewAssetPath(page: Page, pageType: SupportedPageType, pre
 }
 
 function SourcePreview({ page, pageType, presentationPath, imageFormat, refreshKey }: { page: Page; pageType: SupportedPageType; presentationPath: string; imageFormat: string; refreshKey: number }) {
-    const previewUrl = buildPreviewUrl(page, pageType, presentationPath, imageFormat);
+    const previewUrl = buildPreviewUrl(page, pageType, presentationPath);
     const imageAssetPath = buildImagePreviewAssetPath(page, presentationPath, imageFormat);
     const audioAssetPath = buildAudioPreviewAssetPath(page, pageType, presentationPath);
     const source = page.$?.src?.trim();
@@ -406,8 +406,7 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
     const [frameStartErrors, setFrameStartErrors] = useState<Record<number, string>>({});
     const [showAdditionalOptions, setShowAdditionalOptions] = useState(false);
     const hasSource = Boolean(page?.$?.src?.trim());
-
-    if (!page) return <div className='text-sm opacity-70'>Page not found.</div>;
+    const sourceIsRemote = hasRemoteProtocol(page?.$?.src?.trim() ?? '');
 
     useEffect(() => {
         if (pendingFrameFocusIndex === null) return;
@@ -424,6 +423,8 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
         setFrameStartDrafts({});
         setFrameStartErrors({});
     }, [sectionIndex, pageIndex]);
+
+    if (!page) return <div className='text-sm opacity-70'>Page not found.</div>;
 
     const replacePage = (nextPage: Page) => {
         dispatch({
@@ -476,7 +477,7 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
         });
     };
 
-    const handleImportAsset = async (kind: 'page-image' | 'page-audio' | 'bundle-audio' | 'video') => {
+    const handleImportAsset = async (kind: 'page-image' | 'page-audio' | 'bundle-audio' | 'video' | 'html') => {
         const sourceName = page.$?.src?.trim();
         if (!sourceName) {
             showToast('Set the Source field before importing an asset.', 'warning');
@@ -593,6 +594,11 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
                                 {pageType === 'video' && (
                                     <button type='button' className='btn btn-sm btn-outline' onClick={() => handleImportAsset('video')} disabled={!hasSource}>
                                         Upload Video
+                                    </button>
+                                )}
+                                {pageType === 'html' && (
+                                    <button type='button' className='btn btn-sm btn-outline' onClick={() => handleImportAsset('html')} disabled={!hasSource || sourceIsRemote}>
+                                        Upload HTML
                                     </button>
                                 )}
                             </div>

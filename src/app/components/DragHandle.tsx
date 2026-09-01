@@ -1,10 +1,11 @@
 'use client';
 
 import { GripVertical } from 'react-bootstrap-icons';
+import type { DraggableAttributes, DraggableSyntheticListeners } from '@dnd-kit/core';
 
 interface DragHandleProps {
-    attributes?: any;
-    listeners?: any;
+    attributes?: DraggableAttributes;
+    listeners?: DraggableSyntheticListeners;
 }
 
 export default function DragHandle({ attributes, listeners }: DragHandleProps) {

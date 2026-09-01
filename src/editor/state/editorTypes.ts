@@ -15,9 +15,11 @@ export interface EditorState {
 export type EditorAction =
     | { type: 'loadXml'; payload: { presentationPath: string; xml: StorybookXml } }
     | { type: 'setPresentationPath'; payload: { presentationPath: string } }
+    | { type: 'selectSetup' }
     | { type: 'selectSection'; payload: { sectionIndex: number } }
     | { type: 'selectPage'; payload: { sectionIndex: number; pageIndex: number } }
     | { type: 'updateStorybookAttr'; payload: { field: string; value: string } }
+    | { type: 'updateSetupAttr'; payload: { field: string; value: string } }
     | { type: 'updateSetupField'; payload: { field: string; value: string } }
     | { type: 'updateAuthorName'; payload: { value: string } }
     | { type: 'updateAuthorBio'; payload: { value: string } }

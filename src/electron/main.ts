@@ -565,7 +565,7 @@ type SavePayload = {
 
 type ImportAssetPayload = {
     presentationPath: string;
-    kind: 'page-image' | 'page-audio' | 'bundle-audio' | 'video';
+    kind: 'page-image' | 'page-audio' | 'bundle-audio' | 'video' | 'splash-image' | 'quiz-image' | 'quiz-audio' | 'html';
     sourceName: string;
     imageFormat?: string;
     targetBaseName?: string;
@@ -650,6 +650,7 @@ function buildStorybookXml(xml: StorybookXml): string {
     const builder = new Builder({
         xmldec: { version: '1.0', encoding: 'UTF-8' },
         renderOpts: { pretty: true, indent: '  ', newline: '\n' },
+        cdata: true,
     });
 
     return builder.buildObject(normalizeStorybookXml(xml));
@@ -704,6 +705,14 @@ function ensurePresentationFolders(basePath: string) {
 
     fs.mkdirSync(assetsPath, { recursive: true });
     subDirs.forEach((dir) => fs.mkdirSync(path.join(assetsPath, dir), { recursive: true }));
+}
+
+function fileBaseName(fileName: string): string {
+    return path.parse(fileName).name;
+}
+
+function withExtension(fileName: string, extension: string): string {
+    return path.extname(fileName) ? fileName : `${fileName}.${extension}`;
 }
 
 function readAssetAsDataUrl(filePath: string): string {
@@ -763,6 +772,28 @@ async function importPresentationAsset(payload: ImportAssetPayload): Promise<str
         targetPath = path.join(payload.presentationPath, 'assets', 'pages', `${targetBaseName}.${imageFormat}`);
         cleanupDirectory = path.join(payload.presentationPath, 'assets', 'pages');
         cleanupBaseName = targetBaseName;
+    } else if (payload.kind === 'splash-image') {
+        const imageFormat = (payload.imageFormat || 'jpg').toLowerCase();
+        filters = [{ name: `${imageFormat.toUpperCase()} image`, extensions: [imageFormat] }];
+        targetPath = path.join(payload.presentationPath, 'assets', `${targetBaseName}.${imageFormat}`);
+        cleanupDirectory = path.join(payload.presentationPath, 'assets');
+        cleanupBaseName = targetBaseName;
+    } else if (payload.kind === 'quiz-image') {
+        if (!path.extname(targetBaseName)) {
+            throw new Error('Enter an image filename with an extension before importing a quiz image.');
+        }
+        filters = [{ name: 'Image', extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp'] }];
+        targetPath = path.join(payload.presentationPath, 'assets', 'images', targetBaseName);
+        cleanupDirectory = path.join(payload.presentationPath, 'assets', 'images');
+        cleanupBaseName = fileBaseName(targetBaseName);
+    } else if (payload.kind === 'quiz-audio') {
+        if (!path.extname(targetBaseName)) {
+            throw new Error('Enter an audio filename with an extension before importing quiz audio.');
+        }
+        filters = [{ name: 'Audio', extensions: ['mp3', 'wav'] }];
+        targetPath = path.join(payload.presentationPath, 'assets', 'audio', targetBaseName);
+        cleanupDirectory = path.join(payload.presentationPath, 'assets', 'audio');
+        cleanupBaseName = fileBaseName(targetBaseName);
     } else if (payload.kind === 'page-audio') {
         filters = [{ name: 'MP3 audio', extensions: ['mp3'] }];
         targetPath = path.join(payload.presentationPath, 'assets', 'audio', `${sourceName}.mp3`);
@@ -773,11 +804,16 @@ async function importPresentationAsset(payload: ImportAssetPayload): Promise<str
         targetPath = path.join(payload.presentationPath, 'assets', 'audio', `${sourceName}-bundled.mp3`);
         cleanupDirectory = path.join(payload.presentationPath, 'assets', 'audio');
         cleanupBaseName = `${sourceName}-bundled`;
-    } else {
+    } else if (payload.kind === 'video') {
         filters = [{ name: 'MP4 video', extensions: ['mp4'] }];
         targetPath = path.join(payload.presentationPath, 'assets', 'video', `${sourceName}.mp4`);
         cleanupDirectory = path.join(payload.presentationPath, 'assets', 'video');
         cleanupBaseName = sourceName;
+    } else {
+        filters = [{ name: 'HTML', extensions: ['html', 'htm'] }];
+        targetPath = path.join(payload.presentationPath, 'assets', 'html', withExtension(targetBaseName, 'html'));
+        cleanupDirectory = path.join(payload.presentationPath, 'assets', 'html');
+        cleanupBaseName = fileBaseName(targetBaseName);
     }
 
     const result = await dialog.showOpenDialog({

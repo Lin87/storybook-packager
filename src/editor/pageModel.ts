@@ -150,7 +150,7 @@ export const PAGE_CAPABILITIES: Record<SupportedPageType, PageCapabilities> = {
     html: {
         ...NON_QUIZ_CAPS,
         supportsDescription: false,
-        supportsMarkers: false,
+        supportsMarkers: true,
         supportsFrames: false,
         supportsPreventAutoplay: false,
         supportsAllowFullscreen: false,

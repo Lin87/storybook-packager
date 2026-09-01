@@ -3,6 +3,7 @@
 import clsx from 'clsx';
 import { forwardRef, useImperativeHandle, useRef, useState, useEffect } from 'react';
 import type { ReactNode, CSSProperties } from 'react';
+import type { DraggableAttributes, DraggableSyntheticListeners } from '@dnd-kit/core';
 
 import ConfirmDialog from '@/app/components/ConfirmDialog';
 import DeleteButton from '@/app/components/DeleteButton';
@@ -16,6 +17,7 @@ import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-
 import { CSS } from '@dnd-kit/utilities';
 
 import { useSidebarDnD } from '@/editor/ui/Sidebar/useSidebarDnD';
+import type { SidebarDragItem } from '@/editor/ui/Sidebar/useSidebarDnD';
 import { getSectionTitle, getPageTitle } from '@/editor/ui/Sidebar/sidebarUtils';
 
 /* =========================================================
@@ -33,12 +35,12 @@ export interface SidebarHandle {
 type SortableRenderArgs = {
     setNodeRef: (el: HTMLElement | null) => void;
     style: CSSProperties;
-    attributes: any;
-    listeners: any;
+    attributes: DraggableAttributes;
+    listeners: DraggableSyntheticListeners;
     isDragging: boolean;
 };
 
-function SortableItem({ id, data, children }: { id: string; data: any; children: (args: SortableRenderArgs) => ReactNode }) {
+function SortableItem({ id, data, children }: { id: string; data: SidebarDragItem; children: (args: SortableRenderArgs) => ReactNode }) {
     const { setNodeRef, transform, transition, attributes, listeners, isDragging } = useSortable({
         id,
         data,
@@ -84,11 +86,7 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
     const [sectionToDelete, setSectionToDelete] = useState<{ index: number } | null>(null);
     const [pageToDelete, setPageToDelete] = useState<{ section: number; page: number } | null>(null);
 
-    if (!xml) {
-        return <div className='w-64 bg-base-200 p-4 text-sm text-gray-400'>Loading…</div>;
-    }
-
-    const sections = Array.isArray(xml.storybook.section) ? xml.storybook.section : [xml.storybook.section];
+    const sections = xml ? (Array.isArray(xml.storybook.section) ? xml.storybook.section : [xml.storybook.section]) : [];
 
     const isSetupSelected = state.selectedSectionIndex === null && state.selectedPageIndex === null;
 
@@ -105,10 +103,7 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
     ------------------------------ */
 
     const selectSetup = () => {
-        dispatch({
-            type: 'selectSection',
-            payload: { sectionIndex: null as never },
-        });
+        dispatch({ type: 'selectSetup' });
     };
 
     const selectSection = (sectionIndex: number) => {
@@ -208,6 +203,10 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
             });
         });
     }, [state.selectedSectionIndex, setCollapsedSections]);
+
+    if (!xml) {
+        return <div className='w-64 bg-base-200 p-4 text-sm text-gray-400'>Loading...</div>;
+    }
 
     /* -----------------------------
        Render helpers

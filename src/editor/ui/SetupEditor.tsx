@@ -1,11 +1,13 @@
 'use client';
 
+import { showToast } from '@/app/utils/toast';
 import { useEditor } from '@/editor/state/EditorContext';
+import type { Setup } from '@/types/sbplus';
 
 export default function SetupEditor() {
     const { state, dispatch } = useEditor();
 
-    const setup = state.xml!.storybook.setup ?? ({} as any);
+    const setup = state.xml!.storybook.setup ?? ({} as Setup);
 
     const update = (field: string, value: string) => {
         dispatch({
@@ -17,6 +19,13 @@ export default function SetupEditor() {
     const updateStorybookAttr = (field: string, value: string) => {
         dispatch({
             type: 'updateStorybookAttr',
+            payload: { field, value },
+        });
+    };
+
+    const updateSetupAttr = (field: string, value: string) => {
+        dispatch({
+            type: 'updateSetupAttr',
             payload: { field, value },
         });
     };
@@ -33,6 +42,30 @@ export default function SetupEditor() {
             type: 'updateAuthorBio',
             payload: { value },
         });
+    };
+
+    const importSplashImage = async () => {
+        const splashImg = setup.$?.splashImg?.trim();
+        if (!splashImg) {
+            showToast('Set the Splash Image field before importing an asset.', 'warning');
+            return;
+        }
+
+        const result = await window.electronAPI.importPresentationAsset({
+            presentationPath: state.presentationPath,
+            kind: 'splash-image',
+            sourceName: splashImg,
+            imageFormat: state.xml!.storybook.$?.splashImgFormat || 'jpg',
+        });
+
+        if (result.success) {
+            showToast('Splash image imported.', 'success');
+            return;
+        }
+
+        if (result.error !== 'Import canceled.') {
+            showToast(result.error, 'error');
+        }
     };
 
     return (
@@ -65,6 +98,12 @@ export default function SetupEditor() {
                     <input className='input input-md w-full' placeholder='Downloadable File Name' value={state.xml!.storybook.$?.downloadableFileName ?? ''} onChange={(e) => updateStorybookAttr('downloadableFileName', e.target.value)} />
                 </label>
 
+                {/* Analytics Toggle */}
+                <label className='label'>
+                    <input type='checkbox' className='checkbox checkbox-md' checked={state.xml!.storybook.$?.analytics === 'on'} onChange={(e) => updateStorybookAttr('analytics', e.target.checked ? 'on' : 'off')} />
+                    Enable Analytics
+                </label>
+
                 {/* MathJax Toggle */}
                 <label className='label'>
                     <input type='checkbox' className='checkbox checkbox-md' checked={state.xml!.storybook.$?.mathjax === 'on'} onChange={(e) => updateStorybookAttr('mathjax', e.target.checked ? 'on' : 'off')} />
@@ -91,6 +130,17 @@ export default function SetupEditor() {
                     <span>Duration (length)</span>
                     <input className='input input-md w-full' placeholder='Duration (length)' value={setup.length ?? ''} onChange={(e) => update('length', e.target.value)} />
                 </label>
+
+                {/* Splash Image */}
+                <div className='space-y-2'>
+                    <label className='floating-label'>
+                        <span>Splash Image</span>
+                        <input className='input input-md w-full' placeholder='Splash Image' value={setup.$?.splashImg ?? ''} onChange={(e) => updateSetupAttr('splashImg', e.target.value)} />
+                    </label>
+                    <button type='button' className='btn btn-sm btn-outline' onClick={importSplashImage} disabled={!setup.$?.splashImg?.trim()}>
+                        Upload Splash Image
+                    </button>
+                </div>
 
                 {/* Author Name */}
                 <label className='floating-label'>

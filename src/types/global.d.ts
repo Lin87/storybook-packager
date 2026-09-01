@@ -26,7 +26,7 @@ interface SaveAsRequest {
 
 interface ImportAssetPayload {
     presentationPath: string;
-    kind: "page-image" | "page-audio" | "bundle-audio" | "video";
+    kind: "page-image" | "page-audio" | "bundle-audio" | "video" | "splash-image" | "quiz-image" | "quiz-audio" | "html";
     sourceName: string;
     imageFormat?: string;
     targetBaseName?: string;

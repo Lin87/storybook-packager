@@ -1,7 +1,24 @@
 import { useRef, useState, useEffect } from 'react';
-import type { DragOverEvent, DragEndEvent, DragStartEvent, DragCancelEvent, DragMoveEvent } from '@dnd-kit/core';
+import type { DragOverEvent, DragEndEvent, DragStartEvent, DragMoveEvent } from '@dnd-kit/core';
+import type { Dispatch, RefObject, SetStateAction } from 'react';
+import type { Section } from '@/types/sbplus';
+import type { EditorAction } from '@/editor/state/editorTypes';
 
-export function useSidebarDnD({ sections, collapsedSections, setCollapsedSections, dispatch, scrollContainerRef }: { sections: any[]; collapsedSections: Record<number, boolean>; setCollapsedSections: React.Dispatch<React.SetStateAction<Record<number, boolean>>>; dispatch: Function; scrollContainerRef: React.RefObject<HTMLDivElement | null>; }) {
+export type SectionDragItem = { type: 'section'; sectionIndex: number };
+export type PageDragItem = { type: 'page'; sectionIndex: number; pageIndex: number };
+export type SectionDropItem = { type: 'section-drop'; sectionIndex: number };
+export type SidebarDragItem = SectionDragItem | PageDragItem;
+type SidebarDropTarget = SidebarDragItem | SectionDropItem;
+
+interface UseSidebarDnDProps {
+    sections: Section[];
+    collapsedSections: Record<number, boolean>;
+    setCollapsedSections: Dispatch<SetStateAction<Record<number, boolean>>>;
+    dispatch: Dispatch<EditorAction>;
+    scrollContainerRef: RefObject<HTMLDivElement | null>;
+}
+
+export function useSidebarDnD({ sections, collapsedSections, setCollapsedSections, dispatch, scrollContainerRef }: UseSidebarDnDProps) {
     const expandTimeout = useRef<number | null>(null);
 
     const [pageDropIndicator, setPageDropIndicator] = useState<{
@@ -9,7 +26,7 @@ export function useSidebarDnD({ sections, collapsedSections, setCollapsedSection
         pageIndex: number;
     } | null>(null);
 
-    const [activeDragItem, setActiveDragItem] = useState<any>(null);
+    const [activeDragItem, setActiveDragItem] = useState<SidebarDragItem | null>(null);
 
     const autoScrollRafRef = useRef<number | null>(null);
     const autoScrollVelocityRef = useRef(0);
@@ -74,7 +91,7 @@ export function useSidebarDnD({ sections, collapsedSections, setCollapsedSection
     };
 
     function handleDragStart(event: DragStartEvent) {
-        const active = event.active?.data?.current;
+        const active = event.active?.data?.current as SidebarDragItem | undefined;
         if (!active) return;
 
         setActiveDragItem(active);
@@ -109,8 +126,8 @@ export function useSidebarDnD({ sections, collapsedSections, setCollapsedSection
             return;
         }
 
-        const a = active.data?.current;
-        const o = over.data?.current;
+        const a = active.data?.current as SidebarDragItem | undefined;
+        const o = over.data?.current as SidebarDropTarget | undefined;
         if (!a || !o) {
             setPageDropIndicator(null);
             return;
@@ -148,8 +165,8 @@ export function useSidebarDnD({ sections, collapsedSections, setCollapsedSection
 
         if (!over) return;
 
-        const a = active.data.current;
-        const o = over.data.current;
+        const a = active.data.current as SidebarDragItem | undefined;
+        const o = over.data.current as SidebarDropTarget | undefined;
         if (!a || !o) return;
 
         // keep your existing reorder/move logic...
@@ -178,7 +195,7 @@ export function useSidebarDnD({ sections, collapsedSections, setCollapsedSection
         }
     }
 
-    function handleDragCancel(_: DragCancelEvent) {
+    function handleDragCancel() {
         stopAutoScroll();
         setPageDropIndicator(null);
         setActiveDragItem(null);

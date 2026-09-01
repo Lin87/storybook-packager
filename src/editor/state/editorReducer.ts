@@ -74,6 +74,13 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
                 presentationPath: action.payload.presentationPath,
             };
 
+        case 'selectSetup':
+            return {
+                ...state,
+                selectedSectionIndex: null,
+                selectedPageIndex: null,
+            };
+
         case 'selectSection':
             return {
                 ...state,
@@ -100,6 +107,28 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
                         $: {
                             ...(state.xml.storybook.$ ?? {}),
                             [action.payload.field]: action.payload.value,
+                        },
+                    },
+                },
+                dirty: true,
+            };
+        }
+
+        case 'updateSetupAttr': {
+            if (!state.xml) return state;
+
+            return {
+                ...state,
+                xml: {
+                    ...state.xml,
+                    storybook: {
+                        ...state.xml.storybook,
+                        setup: {
+                            ...state.xml.storybook.setup,
+                            $: {
+                                ...(state.xml.storybook.setup.$ ?? {}),
+                                [action.payload.field]: action.payload.value,
+                            },
                         },
                     },
                 },

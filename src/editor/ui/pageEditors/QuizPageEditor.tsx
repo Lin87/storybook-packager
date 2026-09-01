@@ -1,5 +1,6 @@
 'use client';
 
+import { showToast } from '@/app/utils/toast';
 import {
     createEmptyAnswer,
     getQuizSubtype,
@@ -69,7 +70,7 @@ function getQuestionAttrs(page: Page): XmlAttributes | undefined {
 }
 
 export default function QuizPageEditor({ sectionIndex, pageIndex }: PageEditorProps) {
-    const { dispatch, page } = usePageEditorState(sectionIndex, pageIndex);
+    const { dispatch, page, state } = usePageEditorState(sectionIndex, pageIndex);
 
     if (!page) return <div className='text-sm opacity-70'>Page not found.</div>;
 
@@ -180,6 +181,29 @@ export default function QuizPageEditor({ sectionIndex, pageIndex }: PageEditorPr
         }
     };
 
+    const importQuizAsset = async (kind: 'quiz-image' | 'quiz-audio', sourceName: string | undefined) => {
+        const trimmedSourceName = sourceName?.trim();
+        if (!trimmedSourceName) {
+            showToast('Set the asset filename before importing.', 'warning');
+            return;
+        }
+
+        const result = await window.electronAPI.importPresentationAsset({
+            presentationPath: state.presentationPath,
+            kind,
+            sourceName: trimmedSourceName,
+        });
+
+        if (result.success) {
+            showToast('Asset imported.', 'success');
+            return;
+        }
+
+        if (result.error !== 'Import canceled.') {
+            showToast(result.error, 'error');
+        }
+    };
+
     return (
         <div className='space-y-6'>
             <section className='space-y-4 rounded-box border border-base-300 bg-base-200 p-4'>
@@ -245,8 +269,18 @@ export default function QuizPageEditor({ sectionIndex, pageIndex }: PageEditorPr
 
             <section className='space-y-4 rounded-box border border-base-300 bg-base-200 p-4'>
                 <div className='grid gap-4 md:grid-cols-2'>
-                    <Field label='Question Image' value={questionAttrs?.image ?? ''} onChange={(value) => updateQuestionAttr('image', value || undefined)} />
-                    <Field label='Question Audio' value={questionAttrs?.audio ?? ''} onChange={(value) => updateQuestionAttr('audio', value || undefined)} />
+                    <div className='space-y-2'>
+                        <Field label='Question Image' value={questionAttrs?.image ?? ''} onChange={(value) => updateQuestionAttr('image', value || undefined)} />
+                        <button type='button' className='btn btn-sm btn-outline' onClick={() => importQuizAsset('quiz-image', questionAttrs?.image)} disabled={!questionAttrs?.image?.trim()}>
+                            Upload Question Image
+                        </button>
+                    </div>
+                    <div className='space-y-2'>
+                        <Field label='Question Audio' value={questionAttrs?.audio ?? ''} onChange={(value) => updateQuestionAttr('audio', value || undefined)} />
+                        <button type='button' className='btn btn-sm btn-outline' onClick={() => importQuizAsset('quiz-audio', questionAttrs?.audio)} disabled={!questionAttrs?.audio?.trim()}>
+                            Upload Question Audio
+                        </button>
+                    </div>
                 </div>
                 <RichTextEditor label='Question' value={getQuestionValue(page)} onChange={updateQuestionValue} />
             </section>
@@ -380,35 +414,43 @@ export default function QuizPageEditor({ sectionIndex, pageIndex }: PageEditorPr
                                             });
                                         }}
                                     />
+                                    <button type='button' className='btn btn-sm btn-outline' onClick={() => importQuizAsset('quiz-image', answer.$?.image)} disabled={!answer.$?.image?.trim()}>
+                                        Upload Answer Image
+                                    </button>
                                 </div>
 
                                 <div className='grid gap-3 md:grid-cols-2'>
-                                    <Field
-                                        label='Answer Audio'
-                                        value={answer.$?.audio ?? ''}
-                                        onChange={(value) => {
-                                            const nextAnswers = [...answers];
-                                            nextAnswers[index] = { ...answer, $: updateAttrs(answer.$, 'audio', value) };
-                                            if (subtype === 'multipleChoiceSingle') {
+                                    <div className='space-y-2'>
+                                        <Field
+                                            label='Answer Audio'
+                                            value={answer.$?.audio ?? ''}
+                                            onChange={(value) => {
+                                                const nextAnswers = [...answers];
+                                                nextAnswers[index] = { ...answer, $: updateAttrs(answer.$, 'audio', value) };
+                                                if (subtype === 'multipleChoiceSingle') {
+                                                    replacePage({
+                                                        ...page,
+                                                        multipleChoiceSingle: {
+                                                            ...page.multipleChoiceSingle!,
+                                                            choices: { ...page.multipleChoiceSingle!.choices, answer: nextAnswers },
+                                                        },
+                                                    });
+                                                    return;
+                                                }
+
                                                 replacePage({
                                                     ...page,
-                                                    multipleChoiceSingle: {
-                                                        ...page.multipleChoiceSingle!,
-                                                        choices: { ...page.multipleChoiceSingle!.choices, answer: nextAnswers },
+                                                    multipleChoiceMultiple: {
+                                                        ...page.multipleChoiceMultiple!,
+                                                        choices: { ...page.multipleChoiceMultiple!.choices, answer: nextAnswers },
                                                     },
                                                 });
-                                                return;
-                                            }
-
-                                            replacePage({
-                                                ...page,
-                                                multipleChoiceMultiple: {
-                                                    ...page.multipleChoiceMultiple!,
-                                                    choices: { ...page.multipleChoiceMultiple!.choices, answer: nextAnswers },
-                                                },
-                                            });
-                                        }}
-                                    />
+                                            }}
+                                        />
+                                        <button type='button' className='btn btn-sm btn-outline' onClick={() => importQuizAsset('quiz-audio', answer.$?.audio)} disabled={!answer.$?.audio?.trim()}>
+                                            Upload Answer Audio
+                                        </button>
+                                    </div>
                                     <Toggle
                                         label='Correct answer'
                                         checked={answer.$?.correct === 'yes'}
