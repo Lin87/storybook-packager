@@ -443,8 +443,8 @@ function registerIpcHandlers() {
 
     ipcMain.handle('presentation:import-asset', async (_event, payload: ImportAssetPayload) => {
         try {
-            const importedPath = await importPresentationAsset(payload);
-            return { success: true, path: importedPath };
+            const imported = await importPresentationAsset(payload);
+            return { success: true, ...imported };
         } catch (err: unknown) {
             const error = err instanceof Error ? err : new Error(String(err));
             return { success: false, error: error.message };
@@ -566,9 +566,16 @@ type SavePayload = {
 type ImportAssetPayload = {
     presentationPath: string;
     kind: 'page-image' | 'page-audio' | 'bundle-audio' | 'video' | 'splash-image' | 'quiz-image' | 'quiz-audio' | 'html';
-    sourceName: string;
+    sourceName?: string;
     imageFormat?: string;
     targetBaseName?: string;
+};
+
+type ImportAssetResult = {
+    path: string;
+    originalPath: string;
+    originalBaseName: string;
+    targetBaseName: string;
 };
 
 type AssetDataPayload = {
@@ -715,6 +722,10 @@ function withExtension(fileName: string, extension: string): string {
     return path.extname(fileName) ? fileName : `${fileName}.${extension}`;
 }
 
+function normalizeExtension(extension: string | undefined, fallback: string): string {
+    return (extension?.trim() || fallback).replace(/^\.+/, '').toLowerCase();
+}
+
 function readAssetAsDataUrl(filePath: string): string {
     const content = fs.readFileSync(filePath);
     const extension = path.extname(filePath).toLowerCase();
@@ -751,69 +762,52 @@ function removeManagedFilesByBaseName(directory: string, baseName: string) {
     }
 }
 
-async function importPresentationAsset(payload: ImportAssetPayload): Promise<string> {
+async function importPresentationAsset(payload: ImportAssetPayload): Promise<ImportAssetResult> {
     ensurePresentationFolders(payload.presentationPath);
 
-    const sourceName = payload.sourceName.trim();
-    if (!sourceName) {
-        throw new Error('Enter a source name before importing an asset.');
-    }
-
-    const targetBaseName = payload.targetBaseName?.trim() || sourceName;
+    const sourceName = payload.sourceName?.trim() ?? '';
+    const targetBaseName = payload.targetBaseName?.trim() ?? '';
 
     let filters: Electron.FileFilter[] = [];
-    let targetPath = '';
-    let cleanupDirectory = '';
-    let cleanupBaseName = '';
 
     if (payload.kind === 'page-image') {
-        const imageFormat = (payload.imageFormat || 'jpg').toLowerCase();
+        const imageFormat = normalizeExtension(payload.imageFormat, 'jpg');
         filters = [{ name: `${imageFormat.toUpperCase()} image`, extensions: [imageFormat] }];
-        targetPath = path.join(payload.presentationPath, 'assets', 'pages', `${targetBaseName}.${imageFormat}`);
-        cleanupDirectory = path.join(payload.presentationPath, 'assets', 'pages');
-        cleanupBaseName = targetBaseName;
     } else if (payload.kind === 'splash-image') {
-        const imageFormat = (payload.imageFormat || 'jpg').toLowerCase();
+        const imageFormat = normalizeExtension(payload.imageFormat, 'jpg');
         filters = [{ name: `${imageFormat.toUpperCase()} image`, extensions: [imageFormat] }];
-        targetPath = path.join(payload.presentationPath, 'assets', `${targetBaseName}.${imageFormat}`);
-        cleanupDirectory = path.join(payload.presentationPath, 'assets');
-        cleanupBaseName = targetBaseName;
     } else if (payload.kind === 'quiz-image') {
-        if (!path.extname(targetBaseName)) {
+        const quizImageName = targetBaseName || sourceName;
+        if (!quizImageName || !path.extname(quizImageName)) {
             throw new Error('Enter an image filename with an extension before importing a quiz image.');
         }
         filters = [{ name: 'Image', extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp'] }];
-        targetPath = path.join(payload.presentationPath, 'assets', 'images', targetBaseName);
-        cleanupDirectory = path.join(payload.presentationPath, 'assets', 'images');
-        cleanupBaseName = fileBaseName(targetBaseName);
     } else if (payload.kind === 'quiz-audio') {
-        if (!path.extname(targetBaseName)) {
+        const quizAudioName = targetBaseName || sourceName;
+        if (!quizAudioName || !path.extname(quizAudioName)) {
             throw new Error('Enter an audio filename with an extension before importing quiz audio.');
         }
         filters = [{ name: 'Audio', extensions: ['mp3', 'wav'] }];
-        targetPath = path.join(payload.presentationPath, 'assets', 'audio', targetBaseName);
-        cleanupDirectory = path.join(payload.presentationPath, 'assets', 'audio');
-        cleanupBaseName = fileBaseName(targetBaseName);
     } else if (payload.kind === 'page-audio') {
+        if (!sourceName) {
+            throw new Error('Enter a source name before importing an asset.');
+        }
         filters = [{ name: 'MP3 audio', extensions: ['mp3'] }];
-        targetPath = path.join(payload.presentationPath, 'assets', 'audio', `${sourceName}.mp3`);
-        cleanupDirectory = path.join(payload.presentationPath, 'assets', 'audio');
-        cleanupBaseName = sourceName;
     } else if (payload.kind === 'bundle-audio') {
+        if (!sourceName) {
+            throw new Error('Enter a source name before importing an asset.');
+        }
         filters = [{ name: 'MP3 audio', extensions: ['mp3'] }];
-        targetPath = path.join(payload.presentationPath, 'assets', 'audio', `${sourceName}-bundled.mp3`);
-        cleanupDirectory = path.join(payload.presentationPath, 'assets', 'audio');
-        cleanupBaseName = `${sourceName}-bundled`;
     } else if (payload.kind === 'video') {
+        if (!sourceName) {
+            throw new Error('Enter a source name before importing an asset.');
+        }
         filters = [{ name: 'MP4 video', extensions: ['mp4'] }];
-        targetPath = path.join(payload.presentationPath, 'assets', 'video', `${sourceName}.mp4`);
-        cleanupDirectory = path.join(payload.presentationPath, 'assets', 'video');
-        cleanupBaseName = sourceName;
     } else {
+        if (!sourceName) {
+            throw new Error('Enter a source name before importing an asset.');
+        }
         filters = [{ name: 'HTML', extensions: ['html', 'htm'] }];
-        targetPath = path.join(payload.presentationPath, 'assets', 'html', withExtension(targetBaseName, 'html'));
-        cleanupDirectory = path.join(payload.presentationPath, 'assets', 'html');
-        cleanupBaseName = fileBaseName(targetBaseName);
     }
 
     const result = await dialog.showOpenDialog({
@@ -826,9 +820,58 @@ async function importPresentationAsset(payload: ImportAssetPayload): Promise<str
         throw new Error('Import canceled.');
     }
 
+    const originalPath = result.filePaths[0];
+    const originalBaseName = fileBaseName(originalPath);
+    const effectiveTargetBaseName = targetBaseName || sourceName || originalBaseName;
+    let targetPath = '';
+    let cleanupDirectory = '';
+    let cleanupBaseName = '';
+
+    if (payload.kind === 'page-image') {
+        const imageFormat = normalizeExtension(payload.imageFormat, 'jpg');
+        targetPath = path.join(payload.presentationPath, 'assets', 'pages', `${effectiveTargetBaseName}.${imageFormat}`);
+        cleanupDirectory = path.join(payload.presentationPath, 'assets', 'pages');
+        cleanupBaseName = effectiveTargetBaseName;
+    } else if (payload.kind === 'splash-image') {
+        const imageFormat = normalizeExtension(payload.imageFormat, 'jpg');
+        targetPath = path.join(payload.presentationPath, 'assets', `splash.${imageFormat}`);
+        cleanupDirectory = path.join(payload.presentationPath, 'assets');
+        cleanupBaseName = 'splash';
+    } else if (payload.kind === 'quiz-image') {
+        targetPath = path.join(payload.presentationPath, 'assets', 'images', effectiveTargetBaseName);
+        cleanupDirectory = path.join(payload.presentationPath, 'assets', 'images');
+        cleanupBaseName = fileBaseName(effectiveTargetBaseName);
+    } else if (payload.kind === 'quiz-audio') {
+        targetPath = path.join(payload.presentationPath, 'assets', 'audio', effectiveTargetBaseName);
+        cleanupDirectory = path.join(payload.presentationPath, 'assets', 'audio');
+        cleanupBaseName = fileBaseName(effectiveTargetBaseName);
+    } else if (payload.kind === 'page-audio') {
+        targetPath = path.join(payload.presentationPath, 'assets', 'audio', `${sourceName}.mp3`);
+        cleanupDirectory = path.join(payload.presentationPath, 'assets', 'audio');
+        cleanupBaseName = sourceName;
+    } else if (payload.kind === 'bundle-audio') {
+        targetPath = path.join(payload.presentationPath, 'assets', 'audio', `${sourceName}-bundled.mp3`);
+        cleanupDirectory = path.join(payload.presentationPath, 'assets', 'audio');
+        cleanupBaseName = `${sourceName}-bundled`;
+    } else if (payload.kind === 'video') {
+        targetPath = path.join(payload.presentationPath, 'assets', 'video', `${sourceName}.mp4`);
+        cleanupDirectory = path.join(payload.presentationPath, 'assets', 'video');
+        cleanupBaseName = sourceName;
+    } else {
+        targetPath = path.join(payload.presentationPath, 'assets', 'html', withExtension(effectiveTargetBaseName, 'html'));
+        cleanupDirectory = path.join(payload.presentationPath, 'assets', 'html');
+        cleanupBaseName = fileBaseName(effectiveTargetBaseName);
+    }
+
     removeManagedFilesByBaseName(cleanupDirectory, cleanupBaseName);
-    fs.copyFileSync(result.filePaths[0], targetPath);
-    return targetPath;
+    fs.copyFileSync(originalPath, targetPath);
+
+    return {
+        path: targetPath,
+        originalPath,
+        originalBaseName,
+        targetBaseName: effectiveTargetBaseName,
+    };
 }
 
 function writePresentationXml(basePath: string, xml: StorybookXml) {

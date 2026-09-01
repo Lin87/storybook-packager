@@ -45,20 +45,14 @@ export default function SetupEditor() {
     };
 
     const importSplashImage = async () => {
-        const splashImg = setup.$?.splashImg?.trim();
-        if (!splashImg) {
-            showToast('Set the Splash Image field before importing an asset.', 'warning');
-            return;
-        }
-
         const result = await window.electronAPI.importPresentationAsset({
             presentationPath: state.presentationPath,
             kind: 'splash-image',
-            sourceName: splashImg,
             imageFormat: state.xml!.storybook.$?.splashImgFormat || 'jpg',
         });
 
         if (result.success) {
+            updateSetupAttr('splashImg', '');
             showToast('Splash image imported.', 'success');
             return;
         }
@@ -70,9 +64,9 @@ export default function SetupEditor() {
 
     return (
         <>
-            <div className='space-y-6 bg-base-200 border-base-100 rounded-box border p-4'>
+            <div className='space-y-4 bg-base-200 border-base-100 rounded-box border p-4'>
                 {/* STORYBOOK GLOBAL SETTINGS */}
-                <div className='divider divider-info mb-6'>Storybook Settings</div>
+                <div className='divider divider-info mb-4'>Storybook Settings</div>
 
                 {/* Accent Color */}
                 <label className='floating-label'>
@@ -98,17 +92,19 @@ export default function SetupEditor() {
                     <input className='input input-md w-full' placeholder='Downloadable File Name' value={state.xml!.storybook.$?.downloadableFileName ?? ''} onChange={(e) => updateStorybookAttr('downloadableFileName', e.target.value)} />
                 </label>
 
-                {/* Analytics Toggle */}
-                <label className='label'>
-                    <input type='checkbox' className='checkbox checkbox-md' checked={state.xml!.storybook.$?.analytics === 'on'} onChange={(e) => updateStorybookAttr('analytics', e.target.checked ? 'on' : 'off')} />
-                    Enable Analytics
-                </label>
+                <div className='flex flex-col gap-3 pt-1'>
+                    {/* Analytics Toggle */}
+                    <label className='label justify-start gap-3 py-0'>
+                        <input type='checkbox' className='checkbox checkbox-md' checked={state.xml!.storybook.$?.analytics === 'on'} onChange={(e) => updateStorybookAttr('analytics', e.target.checked ? 'on' : 'off')} />
+                        Enable Analytics
+                    </label>
 
-                {/* MathJax Toggle */}
-                <label className='label'>
-                    <input type='checkbox' className='checkbox checkbox-md' checked={state.xml!.storybook.$?.mathjax === 'on'} onChange={(e) => updateStorybookAttr('mathjax', e.target.checked ? 'on' : 'off')} />
-                    Enable MathJax
-                </label>
+                    {/* MathJax Toggle */}
+                    <label className='label justify-start gap-3 py-0'>
+                        <input type='checkbox' className='checkbox checkbox-md' checked={state.xml!.storybook.$?.mathjax === 'on'} onChange={(e) => updateStorybookAttr('mathjax', e.target.checked ? 'on' : 'off')} />
+                        Enable MathJax
+                    </label>
+                </div>
             </div>
             <div className='space-y-6 bg-base-200 border-base-100 rounded-box border p-4 mt-6'>
                 <div className='divider divider-info mb-6'>Presentation Setup</div>
@@ -132,12 +128,12 @@ export default function SetupEditor() {
                 </label>
 
                 {/* Splash Image */}
-                <div className='space-y-2'>
-                    <label className='floating-label'>
+                <div className='join w-full'>
+                    <label className='floating-label join-item flex-1'>
                         <span>Splash Image</span>
-                        <input className='input input-md w-full' placeholder='Splash Image' value={setup.$?.splashImg ?? ''} onChange={(e) => updateSetupAttr('splashImg', e.target.value)} />
+                        <input className='input input-md join-item w-full' placeholder='Splash Image' value={setup.$?.splashImg ?? ''} onChange={(e) => updateSetupAttr('splashImg', e.target.value)} />
                     </label>
-                    <button type='button' className='btn btn-sm btn-outline' onClick={importSplashImage} disabled={!setup.$?.splashImg?.trim()}>
+                    <button type='button' className='btn btn-md btn-outline join-item' onClick={importSplashImage}>
                         Upload Splash Image
                     </button>
                 </div>

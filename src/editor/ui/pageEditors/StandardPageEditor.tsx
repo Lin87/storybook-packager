@@ -61,6 +61,62 @@ function Field({
     );
 }
 
+function SelectField({
+    label,
+    value,
+    onChange,
+    children,
+}: {
+    label: string;
+    value: string;
+    onChange: (value: string) => void;
+    children: React.ReactNode;
+}) {
+    return (
+        <label className='floating-label'>
+            <span>{label}</span>
+            <select className='select select-bordered w-full' value={value} onChange={(event) => onChange(event.target.value)}>
+                {children}
+            </select>
+        </label>
+    );
+}
+
+function UploadField({
+    label,
+    value,
+    onChange,
+    placeholder,
+    uploadLabel,
+    onUpload,
+    uploadDisabled = false,
+}: {
+    label: string;
+    value: string;
+    onChange: (value: string) => void;
+    placeholder?: string;
+    uploadLabel: string;
+    onUpload: () => void;
+    uploadDisabled?: boolean;
+}) {
+    return (
+        <div className='join w-full'>
+            <label className='floating-label join-item flex-1'>
+                <span>{label}</span>
+                <input
+                    className='input input-md join-item w-full'
+                    value={value}
+                    placeholder={placeholder || label}
+                    onChange={(event) => onChange(event.target.value)}
+                />
+            </label>
+            <button type='button' className='btn btn-md btn-outline join-item' onClick={onUpload} disabled={uploadDisabled}>
+                {uploadLabel}
+            </button>
+        </div>
+    );
+}
+
 function TextBlock({ label, value, onChange, rows = 3 }: { label: string; value: string; onChange: (value: string) => void; rows?: number }) {
     return (
         <label className='floating-label'>
@@ -287,16 +343,18 @@ function SourcePreview({ page, pageType, presentationPath, imageFormat, refreshK
             <section className='space-y-3 rounded-box border border-base-300 bg-base-200 p-4'>
                 <h3 className='text-base font-semibold'>Source Preview</h3>
                 {previewSrc && !imageFailed ? (
-                    <img
-                        key={previewSrc}
-                        src={previewSrc}
-                        alt={page.$?.title ?? source}
-                        className='max-h-80 w-full rounded-box border border-base-300 object-contain bg-base-100'
-                        onError={() => setImageFailed(true)}
-                        onLoad={() => setImageFailed(false)}
-                    />
+                    <div className='aspect-video w-full overflow-hidden rounded-box border border-base-300 bg-base-100'>
+                        <img
+                            key={previewSrc}
+                            src={previewSrc}
+                            alt={page.$?.title ?? source}
+                            className='h-full w-full object-contain'
+                            onError={() => setImageFailed(true)}
+                            onLoad={() => setImageFailed(false)}
+                        />
+                    </div>
                 ) : (
-                    <div className='flex h-56 items-center justify-center rounded-box border border-dashed border-base-300 bg-base-100 text-sm opacity-70'>
+                    <div className='flex aspect-video w-full items-center justify-center rounded-box border border-dashed border-base-300 bg-base-100 text-sm opacity-70'>
                         Image preview unavailable. Upload a matching page image to `assets/pages`.
                     </div>
                 )}
@@ -316,7 +374,9 @@ function SourcePreview({ page, pageType, presentationPath, imageFormat, refreshK
             <section className='space-y-3 rounded-box border border-base-300 bg-base-200 p-4'>
                 <h3 className='text-base font-semibold'>Source Preview</h3>
                 {previewUrl ? (
-                    <video controls className='max-h-80 w-full rounded-box border border-base-300 bg-black' src={previewUrl} />
+                    <div className='aspect-video w-full overflow-hidden rounded-box border border-base-300 bg-black'>
+                        <video controls className='h-full w-full object-contain' src={previewUrl} />
+                    </div>
                 ) : (
                     <p className='text-sm opacity-70'>Preview unavailable for this source.</p>
                 )}
@@ -330,12 +390,14 @@ function SourcePreview({ page, pageType, presentationPath, imageFormat, refreshK
             <section className='space-y-3 rounded-box border border-base-300 bg-base-200 p-4'>
                 <h3 className='text-base font-semibold'>Source Preview</h3>
                 {previewUrl ? (
-                    <iframe
-                        title={`${pageType}-preview`}
-                        src={previewUrl}
-                        className='h-80 w-full rounded-box border border-base-300 bg-base-100'
-                        allow='autoplay; encrypted-media; picture-in-picture'
-                    />
+                    <div className='aspect-video w-full overflow-hidden rounded-box border border-base-300 bg-base-100'>
+                        <iframe
+                            title={`${pageType}-preview`}
+                            src={previewUrl}
+                            className='h-full w-full'
+                            allow='autoplay; encrypted-media; picture-in-picture'
+                        />
+                    </div>
                 ) : (
                     <p className='text-sm opacity-70'>Preview unavailable for this source.</p>
                 )}
@@ -479,7 +541,7 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
 
     const handleImportAsset = async (kind: 'page-image' | 'page-audio' | 'bundle-audio' | 'video' | 'html') => {
         const sourceName = page.$?.src?.trim();
-        if (!sourceName) {
+        if (!sourceName && (kind !== 'page-image' || pageType === 'bundle')) {
             showToast('Set the Source field before importing an asset.', 'warning');
             return;
         }
@@ -489,9 +551,13 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
             kind,
             sourceName,
             imageFormat: pageImageFormat,
+            targetBaseName: kind === 'page-image' && pageType === 'bundle' ? `${sourceName}-1` : undefined,
         });
 
         if (result.success) {
+            if (kind === 'page-image' && !sourceName) {
+                updateAttr('src', result.originalBaseName);
+            }
             setPreviewRefreshKey((value) => value + 1);
             showToast('Asset imported.', 'success');
             return;
@@ -532,28 +598,25 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
         <div className='space-y-6'>
             <section className='space-y-4 rounded-box border border-base-300 bg-base-200 p-4'>
                 <div className='grid gap-4 md:grid-cols-2'>
-                    <label className='form-control gap-2'>
-                        <span className='label-text'>Page Type</span>
-                        <select
-                            className='select select-bordered'
-                            value={pageType}
-                            onChange={(event) =>
-                                dispatch({
-                                    type: 'changePageType',
-                                    payload: {
-                                        sectionIndex,
-                                        pageIndex,
-                                        pageType: event.target.value as SupportedPageType,
-                                    },
-                                })
-                            }>
+                    <SelectField
+                        label='Page Type'
+                        value={pageType}
+                        onChange={(value) =>
+                            dispatch({
+                                type: 'changePageType',
+                                payload: {
+                                    sectionIndex,
+                                    pageIndex,
+                                    pageType: value as SupportedPageType,
+                                },
+                            })
+                        }>
                             {PAGE_TYPES.map((type) => (
                                 <option key={type} value={type}>
                                     {PAGE_TYPE_LABELS[type]}
                                 </option>
                             ))}
-                        </select>
-                    </label>
+                    </SelectField>
 
                     <Field
                         label='Title'
@@ -564,23 +627,48 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
 
                 <div className='grid gap-4 md:grid-cols-2'>
                     {caps.supportsSrc && (
-                        <div className='space-y-2'>
-                            <Field
-                                label='Source'
-                                value={page.$?.src ?? ''}
-                                onChange={(value) => updateAttr('src', value || undefined)}
-                                placeholder='Asset name or external ID'
-                            />
-                            <div className='flex flex-wrap gap-2'>
-                                {(pageType === 'image' || pageType === 'image-audio' || pageType === 'bundle') && (
-                                    <button
-                                        type='button'
-                                        className='btn btn-sm btn-outline'
-                                        onClick={() => handleImportAsset('page-image')}
-                                        disabled={!hasSource}>
-                                        {pageType === 'bundle' ? 'Upload Main Frame Image' : 'Upload Page Image'}
-                                    </button>
+                        <div className='flex flex-col gap-2 sm:flex-row sm:items-end'>
+                            <div className='min-w-64 flex-1'>
+                                {pageType === 'image' || pageType === 'image-audio' || pageType === 'bundle' ? (
+                                    <UploadField
+                                        label='Source'
+                                        value={page.$?.src ?? ''}
+                                        onChange={(value) => updateAttr('src', value || undefined)}
+                                        placeholder='Asset name or external ID'
+                                        uploadLabel={pageType === 'bundle' ? 'Upload Main Frame Image' : 'Upload Page Image'}
+                                        onUpload={() => handleImportAsset('page-image')}
+                                        uploadDisabled={pageType === 'bundle' && !hasSource}
+                                    />
+                                ) : pageType === 'video' ? (
+                                    <UploadField
+                                        label='Source'
+                                        value={page.$?.src ?? ''}
+                                        onChange={(value) => updateAttr('src', value || undefined)}
+                                        placeholder='Asset name or external ID'
+                                        uploadLabel='Upload Video'
+                                        onUpload={() => handleImportAsset('video')}
+                                        uploadDisabled={!hasSource}
+                                    />
+                                ) : pageType === 'html' ? (
+                                    <UploadField
+                                        label='Source'
+                                        value={page.$?.src ?? ''}
+                                        onChange={(value) => updateAttr('src', value || undefined)}
+                                        placeholder='Asset name or external ID'
+                                        uploadLabel='Upload HTML'
+                                        onUpload={() => handleImportAsset('html')}
+                                        uploadDisabled={!hasSource || sourceIsRemote}
+                                    />
+                                ) : (
+                                    <Field
+                                        label='Source'
+                                        value={page.$?.src ?? ''}
+                                        onChange={(value) => updateAttr('src', value || undefined)}
+                                        placeholder='Asset name or external ID'
+                                    />
                                 )}
+                            </div>
+                            <div className='flex flex-wrap gap-2 sm:pb-0'>
                                 {pageType === 'image-audio' && (
                                     <button type='button' className='btn btn-sm btn-outline' onClick={() => handleImportAsset('page-audio')} disabled={!hasSource}>
                                         Upload Audio
@@ -589,16 +677,6 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
                                 {pageType === 'bundle' && (
                                     <button type='button' className='btn btn-sm btn-outline' onClick={() => handleImportAsset('bundle-audio')} disabled={!hasSource}>
                                         Upload Audio
-                                    </button>
-                                )}
-                                {pageType === 'video' && (
-                                    <button type='button' className='btn btn-sm btn-outline' onClick={() => handleImportAsset('video')} disabled={!hasSource}>
-                                        Upload Video
-                                    </button>
-                                )}
-                                {pageType === 'html' && (
-                                    <button type='button' className='btn btn-sm btn-outline' onClick={() => handleImportAsset('html')} disabled={!hasSource || sourceIsRemote}>
-                                        Upload HTML
                                     </button>
                                 )}
                             </div>
@@ -756,7 +834,7 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
                 />
             )}
 
-            {(caps.supportsDescription || caps.supportsCopyableContent || caps.supportsMarkers || caps.supportsWidget) && (
+            {(caps.supportsDescription || caps.supportsCopyableContent || caps.supportsMarkers || caps.supportsWidget || pageType === 'html') && (
                 <div className='space-y-4'>
                     <button
                         type='button'
@@ -900,32 +978,31 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
                                     </ArraySection>
                                 </AccordionSection>
                             )}
+
+                            {pageType === 'html' && (
+                                <AccordionSection title='Inline Audio Attributes'>
+                                    <div className='grid gap-3 md:grid-cols-2'>
+                                        {['src', 'autoplay', 'loop', 'controls'].map((field) => (
+                                            <Field
+                                                key={field}
+                                                label={field}
+                                                value={page.audio?.$?.[field] ?? ''}
+                                                onChange={(value) =>
+                                                    replacePage({
+                                                        ...page,
+                                                        audio: {
+                                                            $: updateAttrs(page.audio?.$, field, value || undefined),
+                                                        },
+                                                    })
+                                                }
+                                            />
+                                        ))}
+                                    </div>
+                                </AccordionSection>
+                            )}
                         </div>
                     )}
                 </div>
-            )}
-
-            {caps.supportsAudio && (
-                <section className='space-y-3 rounded-box border border-base-300 bg-base-200 p-4'>
-                    <h3 className='text-base font-semibold'>Inline Audio Attributes</h3>
-                    <div className='grid gap-3 md:grid-cols-2'>
-                        {['src', 'autoplay', 'loop', 'controls'].map((field) => (
-                            <Field
-                                key={field}
-                                label={field}
-                                value={page.audio?.$?.[field] ?? ''}
-                                onChange={(value) =>
-                                    replacePage({
-                                        ...page,
-                                        audio: {
-                                            $: updateAttrs(page.audio?.$, field, value || undefined),
-                                        },
-                                    })
-                                }
-                            />
-                        ))}
-                    </div>
-                </section>
             )}
         </div>
     );

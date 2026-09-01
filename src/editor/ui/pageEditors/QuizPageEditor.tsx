@@ -34,6 +34,53 @@ function Field({ label, value, onChange, type = 'text' }: { label: string; value
     );
 }
 
+function SelectField({
+    label,
+    value,
+    onChange,
+    children,
+}: {
+    label: string;
+    value: string;
+    onChange: (value: string) => void;
+    children: React.ReactNode;
+}) {
+    return (
+        <label className='floating-label'>
+            <span>{label}</span>
+            <select className='select select-bordered w-full' value={value} onChange={(event) => onChange(event.target.value)}>
+                {children}
+            </select>
+        </label>
+    );
+}
+
+function UploadField({
+    label,
+    value,
+    onChange,
+    uploadLabel,
+    onUpload,
+}: {
+    label: string;
+    value: string;
+    onChange: (value: string) => void;
+    uploadLabel: string;
+    onUpload: () => void;
+}) {
+    return (
+        <div className='join w-full'>
+            <label className='floating-label join-item flex-1'>
+                <span>{label}</span>
+                <input className='input input-md join-item w-full' value={value} placeholder={label} onChange={(event) => onChange(event.target.value)} />
+            </label>
+            <button type='button' className='btn btn-md btn-outline join-item' onClick={onUpload} disabled={!value.trim()}>
+                {uploadLabel}
+            </button>
+        </div>
+    );
+}
+
 function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
     return (
         <label className='label cursor-pointer justify-start gap-3 rounded-box border border-base-300 bg-base-100 px-4 py-3'>
@@ -46,6 +93,13 @@ function Toggle({ label, checked, onChange }: { label: string; checked: boolean;
 function isChecked(value: string | undefined) {
     return value === 'true' || value === 'yes' || value === 'on';
 }
+
+const QUIZ_SUBTYPE_LABELS: Record<QuizSubtype, string> = {
+    multipleChoiceSingle: 'Multiple Choice',
+    multipleChoiceMultiple: 'Multiple Answer',
+    shortAnswer: 'Short Answer',
+    fillInTheBlank: 'Fill in the Blank',
+};
 
 function getAnswers(page: Page): QuizAnswer[] {
     if (page.multipleChoiceSingle?.choices?.answer) return page.multipleChoiceSingle.choices.answer;
@@ -208,28 +262,25 @@ export default function QuizPageEditor({ sectionIndex, pageIndex }: PageEditorPr
         <div className='space-y-6'>
             <section className='space-y-4 rounded-box border border-base-300 bg-base-200 p-4'>
                 <div className='grid gap-4 md:grid-cols-2'>
-                    <label className='form-control gap-2'>
-                        <span className='label-text'>Page Type</span>
-                        <select
-                            className='select select-bordered'
-                            value='quiz'
-                            onChange={(event) =>
-                                dispatch({
-                                    type: 'changePageType',
-                                    payload: {
-                                        sectionIndex,
-                                        pageIndex,
-                                        pageType: event.target.value as SupportedPageType,
-                                    },
-                                })
-                            }>
+                    <SelectField
+                        label='Page Type'
+                        value='quiz'
+                        onChange={(value) =>
+                            dispatch({
+                                type: 'changePageType',
+                                payload: {
+                                    sectionIndex,
+                                    pageIndex,
+                                    pageType: value as SupportedPageType,
+                                },
+                            })
+                        }>
                             {PAGE_TYPES.map((type) => (
                                 <option key={type} value={type}>
                                     {PAGE_TYPE_LABELS[type]}
                                 </option>
                             ))}
-                        </select>
-                    </label>
+                    </SelectField>
 
                     <Field
                         label='Title'
@@ -243,44 +294,43 @@ export default function QuizPageEditor({ sectionIndex, pageIndex }: PageEditorPr
                     />
                 </div>
 
-                <label className='form-control gap-2'>
-                    <span className='label-text'>Quiz Type</span>
-                    <select
-                        className='select select-bordered'
-                        value={subtype}
-                        onChange={(event) =>
-                            dispatch({
-                                type: 'changeQuizSubtype',
-                                payload: {
-                                    sectionIndex,
-                                    pageIndex,
-                                    quizSubtype: event.target.value as QuizSubtype,
-                                },
-                            })
-                        }>
-                        {QUIZ_SUBTYPES.map((value) => (
-                            <option key={value} value={value}>
-                                {value}
-                            </option>
-                        ))}
-                    </select>
-                </label>
+                <SelectField
+                    label='Quiz Type'
+                    value={subtype}
+                    onChange={(value) =>
+                        dispatch({
+                            type: 'changeQuizSubtype',
+                            payload: {
+                                sectionIndex,
+                                pageIndex,
+                                quizSubtype: value as QuizSubtype,
+                            },
+                        })
+                    }>
+                    {QUIZ_SUBTYPES.map((value) => (
+                        <option key={value} value={value}>
+                            {QUIZ_SUBTYPE_LABELS[value]}
+                        </option>
+                    ))}
+                </SelectField>
             </section>
 
             <section className='space-y-4 rounded-box border border-base-300 bg-base-200 p-4'>
                 <div className='grid gap-4 md:grid-cols-2'>
-                    <div className='space-y-2'>
-                        <Field label='Question Image' value={questionAttrs?.image ?? ''} onChange={(value) => updateQuestionAttr('image', value || undefined)} />
-                        <button type='button' className='btn btn-sm btn-outline' onClick={() => importQuizAsset('quiz-image', questionAttrs?.image)} disabled={!questionAttrs?.image?.trim()}>
-                            Upload Question Image
-                        </button>
-                    </div>
-                    <div className='space-y-2'>
-                        <Field label='Question Audio' value={questionAttrs?.audio ?? ''} onChange={(value) => updateQuestionAttr('audio', value || undefined)} />
-                        <button type='button' className='btn btn-sm btn-outline' onClick={() => importQuizAsset('quiz-audio', questionAttrs?.audio)} disabled={!questionAttrs?.audio?.trim()}>
-                            Upload Question Audio
-                        </button>
-                    </div>
+                    <UploadField
+                        label='Question Image'
+                        value={questionAttrs?.image ?? ''}
+                        onChange={(value) => updateQuestionAttr('image', value || undefined)}
+                        uploadLabel='Upload Question Image'
+                        onUpload={() => importQuizAsset('quiz-image', questionAttrs?.image)}
+                    />
+                    <UploadField
+                        label='Question Audio'
+                        value={questionAttrs?.audio ?? ''}
+                        onChange={(value) => updateQuestionAttr('audio', value || undefined)}
+                        uploadLabel='Upload Question Audio'
+                        onUpload={() => importQuizAsset('quiz-audio', questionAttrs?.audio)}
+                    />
                 </div>
                 <RichTextEditor label='Question' value={getQuestionValue(page)} onChange={updateQuestionValue} />
             </section>
@@ -388,9 +438,11 @@ export default function QuizPageEditor({ sectionIndex, pageIndex }: PageEditorPr
                                             });
                                         }}
                                     />
-                                    <Field
+                                    <UploadField
                                         label='Answer Image'
                                         value={answer.$?.image ?? ''}
+                                        uploadLabel='Upload Answer Image'
+                                        onUpload={() => importQuizAsset('quiz-image', answer.$?.image)}
                                         onChange={(value) => {
                                             const nextAnswers = [...answers];
                                             nextAnswers[index] = { ...answer, $: updateAttrs(answer.$, 'image', value) };
@@ -414,43 +466,37 @@ export default function QuizPageEditor({ sectionIndex, pageIndex }: PageEditorPr
                                             });
                                         }}
                                     />
-                                    <button type='button' className='btn btn-sm btn-outline' onClick={() => importQuizAsset('quiz-image', answer.$?.image)} disabled={!answer.$?.image?.trim()}>
-                                        Upload Answer Image
-                                    </button>
                                 </div>
 
                                 <div className='grid gap-3 md:grid-cols-2'>
-                                    <div className='space-y-2'>
-                                        <Field
-                                            label='Answer Audio'
-                                            value={answer.$?.audio ?? ''}
-                                            onChange={(value) => {
-                                                const nextAnswers = [...answers];
-                                                nextAnswers[index] = { ...answer, $: updateAttrs(answer.$, 'audio', value) };
-                                                if (subtype === 'multipleChoiceSingle') {
-                                                    replacePage({
-                                                        ...page,
-                                                        multipleChoiceSingle: {
-                                                            ...page.multipleChoiceSingle!,
-                                                            choices: { ...page.multipleChoiceSingle!.choices, answer: nextAnswers },
-                                                        },
-                                                    });
-                                                    return;
-                                                }
-
+                                    <UploadField
+                                        label='Answer Audio'
+                                        value={answer.$?.audio ?? ''}
+                                        uploadLabel='Upload Answer Audio'
+                                        onUpload={() => importQuizAsset('quiz-audio', answer.$?.audio)}
+                                        onChange={(value) => {
+                                            const nextAnswers = [...answers];
+                                            nextAnswers[index] = { ...answer, $: updateAttrs(answer.$, 'audio', value) };
+                                            if (subtype === 'multipleChoiceSingle') {
                                                 replacePage({
                                                     ...page,
-                                                    multipleChoiceMultiple: {
-                                                        ...page.multipleChoiceMultiple!,
-                                                        choices: { ...page.multipleChoiceMultiple!.choices, answer: nextAnswers },
+                                                    multipleChoiceSingle: {
+                                                        ...page.multipleChoiceSingle!,
+                                                        choices: { ...page.multipleChoiceSingle!.choices, answer: nextAnswers },
                                                     },
                                                 });
-                                            }}
-                                        />
-                                        <button type='button' className='btn btn-sm btn-outline' onClick={() => importQuizAsset('quiz-audio', answer.$?.audio)} disabled={!answer.$?.audio?.trim()}>
-                                            Upload Answer Audio
-                                        </button>
-                                    </div>
+                                                return;
+                                            }
+
+                                            replacePage({
+                                                ...page,
+                                                multipleChoiceMultiple: {
+                                                    ...page.multipleChoiceMultiple!,
+                                                    choices: { ...page.multipleChoiceMultiple!.choices, answer: nextAnswers },
+                                                },
+                                            });
+                                        }}
+                                    />
                                     <Toggle
                                         label='Correct answer'
                                         checked={answer.$?.correct === 'yes'}

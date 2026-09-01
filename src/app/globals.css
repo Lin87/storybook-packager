@@ -63,6 +63,13 @@ body.dark {
     flex: 1;
     padding: 0.875rem 1rem;
     font-family: var(--font-poppins-sans);
+    background: color-mix(in srgb, var(--color-base-100) 72%, white);
+    min-height: inherit;
+}
+
+html.dark .rich-text-editor .simple-editor-content .tiptap.ProseMirror.simple-editor,
+body.dark .rich-text-editor .simple-editor-content .tiptap.ProseMirror.simple-editor {
+    background: color-mix(in srgb, var(--color-base-300) 82%, black);
 }
 
 .rich-text-editor .simple-editor-content .tiptap.ProseMirror.simple-editor > :first-child {
