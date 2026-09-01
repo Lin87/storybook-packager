@@ -11,9 +11,9 @@
         "start:electron:dev": "wait-on http://localhost:3000 && node env-scripts/start-electron-dev.cjs",
         "start:electron:prod": "node env-scripts/build-and-start-electron-prod.cjs",
         "dev": "concurrently -n NEXT,ELECTRON -c green,blue \"npm run dev:next\" \"npm run start:electron:dev\"",
-        "build:prod": "npm run build:next && npm run export:next && npm run build:electron && npm run predist && electron-builder",
+        "build:prod": "npm run build:next && npm run build:electron && npm run predist && electron-builder",
         "build:next": "next build",
-        "export:next": "next export -o out",
+        "test:compat": "node --test tests/sbplus-compatibility.test.cjs",
         "build:electron": "tsc -p tsconfig.electron.json",
         "predist": "node -e \"require('fs').mkdirSync('node_modules/@img/sharp-darwin-arm64', { recursive: true });\""
     },
