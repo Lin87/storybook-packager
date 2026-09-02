@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-require-imports */
-
 const { contextBridge, ipcRenderer } = require('electron');
 
 function normalizeSaveResult(result, fallbackError) {
