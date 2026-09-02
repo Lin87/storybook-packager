@@ -79,7 +79,7 @@ export function SimpleEditor({
         autocorrect: "off",
         autocapitalize: "off",
         "aria-label": ariaLabel,
-        class: `simple-editor tiptap-editor ${minHeightClassName}`,
+        class: "simple-editor tiptap-editor",
       },
     },
     extensions: [
@@ -188,7 +188,7 @@ export function SimpleEditor({
         <EditorContent
           editor={editor}
           role="presentation"
-          className="simple-editor-content"
+          className={`simple-editor-content ${minHeightClassName}`}
         />
       </EditorContext.Provider>
     </div>

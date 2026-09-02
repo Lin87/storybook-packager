@@ -100,19 +100,18 @@ function UploadField({
     uploadDisabled?: boolean;
 }) {
     return (
-        <div className='join w-full'>
-            <label className='floating-label join-item flex-1'>
-                <span>{label}</span>
-                <input
-                    className='input input-md join-item w-full'
-                    value={value}
-                    placeholder={placeholder || label}
-                    onChange={(event) => onChange(event.target.value)}
-                />
-            </label>
-            <button type='button' className='btn btn-md btn-outline join-item' onClick={onUpload} disabled={uploadDisabled}>
-                {uploadLabel}
-            </button>
+        <div className='flex flex-row gap-4'>
+        <label className='input floating-label flex-1'>
+            <span>{label}</span>
+            <input
+                value={value}
+                placeholder={placeholder || label}
+                onChange={(event) => onChange(event.target.value)}
+            />
+        </label>
+        <button type='button' className='btn btn-md btn-soft' onClick={onUpload} disabled={uploadDisabled}>
+            {uploadLabel}
+        </button>
         </div>
     );
 }
@@ -128,23 +127,20 @@ function TextBlock({ label, value, onChange, rows = 3 }: { label: string; value:
 
 function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
     return (
-        <label className='label cursor-pointer justify-start gap-3 rounded-box border border-base-300 bg-base-100 px-4 py-3'>
+        <label className='label cursor-pointer justify-start gap-3 rounded-box border border-base-300 bg-base-100 px-4 py-3 flex-1'>
             <input type='checkbox' className='checkbox checkbox-sm' checked={checked} onChange={(event) => onChange(event.target.checked)} />
             <span className='label-text'>{label}</span>
         </label>
     );
 }
 
-function ArraySection({ title, children, addLabel, onAdd }: { title: string; children: React.ReactNode; addLabel: string; onAdd: () => void }) {
+function ArraySection({ children, addLabel, onAdd }: { children: React.ReactNode; addLabel: string; onAdd: () => void }) {
     return (
-        <section className='space-y-3 rounded-box border border-base-300 bg-base-200 p-4'>
-            <div className='flex items-center justify-between gap-3'>
-                <h3 className='text-base font-semibold'>{title}</h3>
-                <button type='button' className='btn btn-sm btn-outline' onClick={onAdd}>
-                    {addLabel}
-                </button>
-            </div>
-            <div className='space-y-3'>{children}</div>
+        <section className='space-y-4'>
+            <button type='button' className='btn btn-sm btn-accent btn-soft btn-block' onClick={onAdd}>
+                {addLabel}
+            </button>
+            <div className='space-y-4 px-4'>{children}</div>
         </section>
     );
 }
@@ -341,9 +337,9 @@ function SourcePreview({ page, pageType, presentationPath, imageFormat, refreshK
     if (pageType === 'image' || pageType === 'image-audio' || pageType === 'bundle') {
         return (
             <section className='space-y-3 rounded-box border border-base-300 bg-base-200 p-4'>
-                <h3 className='text-base font-semibold'>Source Preview</h3>
+                <h3 className='sr-only'>Source Preview</h3>
                 {previewSrc && !imageFailed ? (
-                    <div className='aspect-video w-full overflow-hidden rounded-box border border-base-300 bg-base-100'>
+                    <div className='aspect-video w-full overflow-hidden border border-base-300 bg-base-100'>
                         <img
                             key={previewSrc}
                             src={previewSrc}
@@ -354,17 +350,15 @@ function SourcePreview({ page, pageType, presentationPath, imageFormat, refreshK
                         />
                     </div>
                 ) : (
-                    <div className='flex aspect-video w-full items-center justify-center rounded-box border border-dashed border-base-300 bg-base-100 text-sm opacity-70'>
-                        Image preview unavailable. Upload a matching page image to `assets/pages`.
+                    <div className='flex aspect-video w-full items-center justify-center border border-dashed border-base-300 bg-base-100 text-sm opacity-70'>
+                        Image preview unavailable. Upload an image source.
                     </div>
                 )}
                 {(pageType === 'image-audio' || pageType === 'bundle') && audioPreviewSrc && (
                     <div className='space-y-2'>
-                        <div className='text-sm font-medium'>Audio Preview</div>
                         <audio controls className='w-full' src={audioPreviewSrc} />
                     </div>
                 )}
-                <div className='text-xs opacity-70'>{source}</div>
             </section>
         );
     }
@@ -372,15 +366,14 @@ function SourcePreview({ page, pageType, presentationPath, imageFormat, refreshK
     if (pageType === 'video') {
         return (
             <section className='space-y-3 rounded-box border border-base-300 bg-base-200 p-4'>
-                <h3 className='text-base font-semibold'>Source Preview</h3>
+                <h3 className='sr-only'>Source Preview</h3>
                 {previewUrl ? (
-                    <div className='aspect-video w-full overflow-hidden rounded-box border border-base-300 bg-black'>
+                    <div className='aspect-video w-full overflow-hidden border border-base-300 bg-black'>
                         <video controls className='h-full w-full object-contain' src={previewUrl} />
                     </div>
                 ) : (
                     <p className='text-sm opacity-70'>Preview unavailable for this source.</p>
                 )}
-                <div className='text-xs opacity-70'>{source}</div>
             </section>
         );
     }
@@ -388,9 +381,9 @@ function SourcePreview({ page, pageType, presentationPath, imageFormat, refreshK
     if (pageType === 'youtube' || pageType === 'html') {
         return (
             <section className='space-y-3 rounded-box border border-base-300 bg-base-200 p-4'>
-                <h3 className='text-base font-semibold'>Source Preview</h3>
+                <h3 className='sr-only'>Source Preview</h3>
                 {previewUrl ? (
-                    <div className='aspect-video w-full overflow-hidden rounded-box border border-base-300 bg-base-100'>
+                    <div className='aspect-video w-full overflow-hidden border border-base-300 bg-base-100'>
                         <iframe
                             title={`${pageType}-preview`}
                             src={previewUrl}
@@ -401,7 +394,6 @@ function SourcePreview({ page, pageType, presentationPath, imageFormat, refreshK
                 ) : (
                     <p className='text-sm opacity-70'>Preview unavailable for this source.</p>
                 )}
-                <div className='text-xs opacity-70'>{source}</div>
             </section>
         );
     }
@@ -410,7 +402,7 @@ function SourcePreview({ page, pageType, presentationPath, imageFormat, refreshK
         <section className='space-y-2 rounded-box border border-base-300 bg-base-200 p-4'>
             <h3 className='text-base font-semibold'>Source Preview</h3>
             <p className='text-sm opacity-70'>Live preview is not available for this provider yet.</p>
-            <div className='rounded-box border border-base-300 bg-base-100 px-3 py-2 font-mono text-xs'>{source}</div>
+            <div className='border border-base-300 bg-base-100 px-3 py-2 font-mono text-xs'>{source}</div>
         </section>
     );
 }
@@ -596,103 +588,90 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
 
     return (
         <div className='space-y-6'>
-            <section className='space-y-4 rounded-box border border-base-300 bg-base-200 p-4'>
-                <div className='grid gap-4 md:grid-cols-2'>
-                    <SelectField
-                        label='Page Type'
-                        value={pageType}
-                        onChange={(value) =>
-                            dispatch({
-                                type: 'changePageType',
-                                payload: {
-                                    sectionIndex,
-                                    pageIndex,
-                                    pageType: value as SupportedPageType,
-                                },
-                            })
-                        }>
-                            {PAGE_TYPES.map((type) => (
-                                <option key={type} value={type}>
-                                    {PAGE_TYPE_LABELS[type]}
-                                </option>
-                            ))}
-                    </SelectField>
-
-                    <Field
-                        label='Title'
-                        value={page.$?.title ?? ''}
-                        onChange={(value) => updateAttr('title', value)}
-                    />
-                </div>
-
-                <div className='grid gap-4 md:grid-cols-2'>
-                    {caps.supportsSrc && (
-                        <div className='flex flex-col gap-2 sm:flex-row sm:items-end'>
-                            <div className='min-w-64 flex-1'>
-                                {pageType === 'image' || pageType === 'image-audio' || pageType === 'bundle' ? (
-                                    <UploadField
-                                        label='Source'
-                                        value={page.$?.src ?? ''}
-                                        onChange={(value) => updateAttr('src', value || undefined)}
-                                        placeholder='Asset name or external ID'
-                                        uploadLabel={pageType === 'bundle' ? 'Upload Main Frame Image' : 'Upload Page Image'}
-                                        onUpload={() => handleImportAsset('page-image')}
-                                        uploadDisabled={pageType === 'bundle' && !hasSource}
-                                    />
-                                ) : pageType === 'video' ? (
-                                    <UploadField
-                                        label='Source'
-                                        value={page.$?.src ?? ''}
-                                        onChange={(value) => updateAttr('src', value || undefined)}
-                                        placeholder='Asset name or external ID'
-                                        uploadLabel='Upload Video'
-                                        onUpload={() => handleImportAsset('video')}
-                                        uploadDisabled={!hasSource}
-                                    />
-                                ) : pageType === 'html' ? (
-                                    <UploadField
-                                        label='Source'
-                                        value={page.$?.src ?? ''}
-                                        onChange={(value) => updateAttr('src', value || undefined)}
-                                        placeholder='Asset name or external ID'
-                                        uploadLabel='Upload HTML'
-                                        onUpload={() => handleImportAsset('html')}
-                                        uploadDisabled={!hasSource || sourceIsRemote}
-                                    />
-                                ) : (
-                                    <Field
-                                        label='Source'
-                                        value={page.$?.src ?? ''}
-                                        onChange={(value) => updateAttr('src', value || undefined)}
-                                        placeholder='Asset name or external ID'
-                                    />
-                                )}
-                            </div>
-                            <div className='flex flex-wrap gap-2 sm:pb-0'>
-                                {pageType === 'image-audio' && (
-                                    <button type='button' className='btn btn-sm btn-outline' onClick={() => handleImportAsset('page-audio')} disabled={!hasSource}>
-                                        Upload Audio
-                                    </button>
-                                )}
-                                {pageType === 'bundle' && (
-                                    <button type='button' className='btn btn-sm btn-outline' onClick={() => handleImportAsset('bundle-audio')} disabled={!hasSource}>
-                                        Upload Audio
-                                    </button>
-                                )}
-                            </div>
+            <section className='space-y-4 rounded-box border border-base-300 bg-base-200 px-4 pt-6 pb-4'>
+                <div className="space-y-6">
+                    <div className='flex gap-4'>
+                        <div className="w-50">
+                            <SelectField
+                                label='Page Type'
+                                value={pageType}
+                                onChange={(value) =>
+                                    dispatch({
+                                        type: 'changePageType',
+                                        payload: {
+                                            sectionIndex,
+                                            pageIndex,
+                                            pageType: value as SupportedPageType,
+                                        },
+                                    })
+                                }>
+                                    {PAGE_TYPES.map((type) => (
+                                        <option key={type} value={type}>
+                                            {PAGE_TYPE_LABELS[type]}
+                                        </option>
+                                    ))}
+                            </SelectField>
                         </div>
-                    )}
-
-                    {caps.supportsTransition && (
-                        <Field
-                            label='Transition'
-                            value={page.$?.transition ?? ''}
-                            onChange={(value) => updateAttr('transition', value || undefined)}
-                        />
+                        <div className="flex-1">
+                            <Field
+                                label='Title'
+                                value={page.$?.title ?? ''}
+                                onChange={(value) => updateAttr('title', value)}
+                            />
+                        </div>
+                    </div>
+                    {caps.supportsSrc && (
+                    <div className='flex flex-row gap-4'>
+                        <div className='flex-1'>
+                            {pageType === 'image' || pageType === 'image-audio' || pageType === 'bundle' ? (
+                                <UploadField
+                                    label='Source'
+                                    value={page.$?.src ?? ''}
+                                    onChange={(value) => updateAttr('src', value || undefined)}
+                                    placeholder='Asset name or external ID'
+                                    uploadLabel={pageType === 'bundle' ? 'Upload Main Frame Image' : 'Upload Page Image'}
+                                    onUpload={() => handleImportAsset('page-image')}
+                                    uploadDisabled={pageType === 'bundle' && !hasSource}
+                                />
+                            ) : pageType === 'video' ? (
+                                <UploadField
+                                    label='Source'
+                                    value={page.$?.src ?? ''}
+                                    onChange={(value) => updateAttr('src', value || undefined)}
+                                    placeholder='Asset name or external ID'
+                                    uploadLabel='Upload Video'
+                                    onUpload={() => handleImportAsset('video')}
+                                    uploadDisabled={!hasSource}
+                                />
+                            ) : pageType === 'html' ? (
+                                <UploadField
+                                    label='Source'
+                                    value={page.$?.src ?? ''}
+                                    onChange={(value) => updateAttr('src', value || undefined)}
+                                    placeholder='Asset name or external ID'
+                                    uploadLabel='Upload HTML'
+                                    onUpload={() => handleImportAsset('html')}
+                                    uploadDisabled={!hasSource || sourceIsRemote}
+                                />
+                            ) : (
+                                <Field
+                                    label='Source'
+                                    value={page.$?.src ?? ''}
+                                    onChange={(value) => updateAttr('src', value || undefined)}
+                                    placeholder='Asset name or external ID'
+                                />
+                            )}
+                        </div>
+                        {(pageType === 'image-audio' || pageType === 'bundle') && (
+                            <button type='button' className='btn btn-md btn-soft' onClick={() => handleImportAsset('page-audio')} disabled={!hasSource}>
+                                Upload Audio
+                            </button>
+                        )}
+                    </div>
                     )}
                 </div>
-
-                <div className='grid gap-3 md:grid-cols-2 xl:grid-cols-3'>
+                
+                <div className='flex flex-row gap-4'>
                     {caps.supportsPreventAutoplay && (
                         <Toggle
                             label='Prevent autoplay'
@@ -742,7 +721,7 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
             )}
 
             {caps.supportsFrames && (
-                <div className='grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]'>
+                <div className='flex flex-col gap-4'>
                     <SourcePreview
                         page={page}
                         pageType={pageType}
@@ -751,7 +730,6 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
                         refreshKey={previewRefreshKey}
                     />
                     <ArraySection
-                        title='Frames'
                         addLabel='Add Frame'
                         onAdd={() => {
                             const nextFrames = [...(page.frame ?? []), createEmptyFrame()];
@@ -761,22 +739,19 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
                                 frame: nextFrames,
                             });
                         }}>
-                        <div className='rounded-box border border-base-300 bg-base-100 px-3 py-2 text-sm opacity-80'>
-                            The main source preview uses <span className='font-mono'>{`${page.$?.src ?? 'source'}-1.${pageImageFormat}`}</span>. Frame entries below start at <span className='font-mono'>{`${page.$?.src ?? 'source'}-2.${pageImageFormat}`}</span> and stay sorted by start time.
-                        </div>
                         {(page.frame ?? []).map((frame, index) => {
                             const frameNumber = index + 2;
                             const frameAssetPath = buildFramePreviewAssetPath(page.$?.src, state.presentationPath, pageImageFormat, frameNumber);
 
                             return (
-                                <div key={`frame-${index}`} className='space-y-3 rounded-box border border-base-300 bg-base-100 p-3'>
-                                    <div className='flex flex-wrap items-center justify-between gap-3'>
+                                <div key={`frame-${index}`} className='space-y-4 rounded-box border border-base-300 bg-base-200 p-4'>
+                                    <div className='flex flex-wrap items-center justify-between gap-4'>
                                         <div className='font-medium'>Frame {frameNumber}</div>
                                         <div className='text-xs opacity-70'>
                                             Image: <span className='font-mono'>{`${page.$?.src ?? 'source'}-${frameNumber}.${pageImageFormat}`}</span>
                                         </div>
                                     </div>
-                                    <div className='flex flex-wrap items-end gap-3'>
+                                    <div className='flex flex-wrap items-end gap-4'>
                                         <FrameThumbnail
                                             assetPath={frameAssetPath}
                                             alt={`Frame ${frameNumber}`}
@@ -802,14 +777,14 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
                                         </div>
                                         <button
                                             type='button'
-                                            className='btn btn-sm btn-outline'
+                                            className='btn btn-soft'
                                             onClick={() => handleImportFrameImage(frameNumber)}
                                             disabled={!hasSource}>
                                             Import Image
                                         </button>
                                         <button
                                             type='button'
-                                            className='btn btn-sm btn-error btn-outline'
+                                            className='btn btn-error btn-soft'
                                             onClick={() =>
                                                 replacePage({
                                                     ...page,
@@ -834,17 +809,17 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
                 />
             )}
 
-            {(caps.supportsDescription || caps.supportsCopyableContent || caps.supportsMarkers || caps.supportsWidget || pageType === 'html') && (
+            {(caps.supportsDescription || caps.supportsCopyableContent || caps.supportsMarkers || caps.supportsWidget || caps.supportsTransition || pageType === 'html') && (
                 <div className='space-y-4'>
                     <button
                         type='button'
-                        className='btn btn-outline'
+                        className='btn btn-block btn-soft btn-secondary'
                         onClick={() => setShowAdditionalOptions((value) => !value)}>
                         {showAdditionalOptions ? 'Hide Additional Options' : 'Show Additional Options'}
                     </button>
 
                     {showAdditionalOptions && (
-                        <div className='space-y-4'>
+                        <div className='space-y-4 px-4'>
                             {caps.supportsDescription && (
                                 <AccordionSection title='Description'>
                                     <TextBlock
@@ -870,7 +845,6 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
                             {caps.supportsMarkers && (
                                 <AccordionSection title='Markers'>
                                     <ArraySection
-                                        title='Markers'
                                         addLabel='Add Marker'
                                         onAdd={() =>
                                             replacePage({
@@ -881,26 +855,30 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
                                             })
                                         }>
                                         {(page.markers?.marker ?? []).map((marker, index) => (
-                                            <div key={index} className='space-y-3 rounded-box border border-base-300 bg-base-100 p-3'>
-                                                <div className='grid gap-3 md:grid-cols-2'>
-                                                    <Field
-                                                        label='Timecode'
-                                                        value={marker.$?.timecode ?? ''}
-                                                        onChange={(value) => {
-                                                            const markers = [...(page.markers?.marker ?? [])];
-                                                            markers[index] = { ...marker, $: updateAttrs(marker.$, 'timecode', value) };
-                                                            replacePage({ ...page, markers: { marker: markers } });
-                                                        }}
-                                                    />
-                                                    <Field
-                                                        label='Color'
-                                                        value={marker.$?.color ?? ''}
-                                                        onChange={(value) => {
-                                                            const markers = [...(page.markers?.marker ?? [])];
-                                                            markers[index] = { ...marker, $: updateAttrs(marker.$, 'color', value) };
-                                                            replacePage({ ...page, markers: { marker: markers } });
-                                                        }}
-                                                    />
+                                            <div key={index} className='space-y-6 rounded-box border border-base-300 bg-base-100 px-4 pt-6 pb-4'>
+                                                <div className='flex flex-row gap-4'>
+                                                    <div className="flex-1">
+                                                        <Field
+                                                            label='Timecode'
+                                                            value={marker.$?.timecode ?? ''}
+                                                            onChange={(value) => {
+                                                                const markers = [...(page.markers?.marker ?? [])];
+                                                                markers[index] = { ...marker, $: updateAttrs(marker.$, 'timecode', value) };
+                                                                replacePage({ ...page, markers: { marker: markers } });
+                                                            }}
+                                                        />
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <Field
+                                                            label='Color'
+                                                            value={marker.$?.color ?? ''}
+                                                            onChange={(value) => {
+                                                                const markers = [...(page.markers?.marker ?? [])];
+                                                                markers[index] = { ...marker, $: updateAttrs(marker.$, 'color', value) };
+                                                                replacePage({ ...page, markers: { marker: markers } });
+                                                            }}
+                                                        />
+                                                    </div>
                                                 </div>
                                                 <TextBlock
                                                     label='Label'
@@ -914,7 +892,7 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
                                                 />
                                                 <button
                                                     type='button'
-                                                    className='btn btn-sm btn-error btn-outline'
+                                                    className='btn btn-sm btn-error btn-soft'
                                                     onClick={() => replacePage({ ...page, markers: { marker: (page.markers?.marker ?? []).filter((_, currentIndex) => currentIndex !== index) } })}>
                                                     Remove Marker
                                                 </button>
@@ -927,7 +905,6 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
                             {caps.supportsWidget && (
                                 <AccordionSection title='Widget Segments'>
                                     <ArraySection
-                                        title='Widget Segments'
                                         addLabel='Add Segment'
                                         onAdd={() =>
                                             replacePage({
@@ -939,7 +916,7 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
                                             })
                                         }>
                                         {(page.widget?.segment ?? []).map((segment, index) => (
-                                            <div key={index} className='space-y-3 rounded-box border border-base-300 bg-base-100 p-3'>
+                                            <div key={index} className='space-y-4 rounded-box border border-base-300 bg-base-100 px-4 pt-6 pb-4'>
                                                 <Field
                                                     label='Segment Name'
                                                     value={segment.$?.name ?? ''}
@@ -961,7 +938,7 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
                                                 />
                                                 <button
                                                     type='button'
-                                                    className='btn btn-sm btn-error btn-outline'
+                                                    className='btn btn-sm btn-error btn-soft'
                                                     onClick={() =>
                                                         replacePage({
                                                             ...page,
@@ -976,6 +953,16 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
                                             </div>
                                         ))}
                                     </ArraySection>
+                                </AccordionSection>
+                            )}
+
+                            {caps.supportsTransition && (
+                                <AccordionSection title='Page Transition'>
+                                    <Field
+                                        label='Transition'
+                                        value={page.$?.transition ?? ''}
+                                        onChange={(value) => updateAttr('transition', value || undefined)}
+                                    />
                                 </AccordionSection>
                             )}
 

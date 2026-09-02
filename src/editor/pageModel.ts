@@ -87,7 +87,7 @@ export const PAGE_CAPABILITIES: Record<SupportedPageType, PageCapabilities> = {
         supportsDescription: true,
         supportsMarkers: true,
         supportsFrames: true,
-        supportsPreventAutoplay: false,
+        supportsPreventAutoplay: true,
         supportsAllowFullscreen: false,
         supportsUseDefaultPlayer: false,
         supportsEmbed: false,

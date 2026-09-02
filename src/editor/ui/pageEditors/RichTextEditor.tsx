@@ -11,7 +11,7 @@ interface RichTextEditorProps {
 
 export default function RichTextEditor({ label, value, onChange, minHeightClassName = 'min-h-32' }: RichTextEditorProps) {
     return (
-        <div className='form-control gap-2 rich-text-editor'>
+        <div className='form-control flex flex-col gap-4 rich-text-editor'>
             <label className='label py-0'>
                 <span className='label-text'>{label}</span>
             </label>
