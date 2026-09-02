@@ -1,6 +1,6 @@
 'use client';
 
-import { SimpleEditor } from '@/components/tiptap-templates/simple/simple-editor';
+import { SimpleEditor } from '@/vendor/tiptap/tiptap-templates/simple/simple-editor';
 
 interface RichTextEditorProps {
     label: string;
