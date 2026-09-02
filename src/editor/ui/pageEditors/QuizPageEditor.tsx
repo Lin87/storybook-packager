@@ -1,5 +1,6 @@
 'use client';
 
+import { EditorPanel, Field, SelectField, Toggle, UploadField } from '@/app/components/EditorFormControls';
 import { showToast } from '@/app/utils/toast';
 import {
     createEmptyAnswer,
@@ -23,71 +24,6 @@ function updateAttrs(attrs: XmlAttributes | undefined, field: string, value: str
         nextAttrs[field] = value;
     }
     return nextAttrs;
-}
-
-function Field({ label, value, onChange, type = 'text' }: { label: string; value: string; onChange: (value: string) => void; type?: string }) {
-    return (
-        <label className='floating-label'>
-            <span>{label}</span>
-            <input className='input input-md w-full' type={type} value={value} placeholder={label} onChange={(event) => onChange(event.target.value)} />
-        </label>
-    );
-}
-
-function SelectField({
-    label,
-    value,
-    onChange,
-    children,
-}: {
-    label: string;
-    value: string;
-    onChange: (value: string) => void;
-    children: React.ReactNode;
-}) {
-    return (
-        <label className='floating-label'>
-            <span>{label}</span>
-            <select className='select select-bordered w-full' value={value} onChange={(event) => onChange(event.target.value)}>
-                {children}
-            </select>
-        </label>
-    );
-}
-
-function UploadField({
-    label,
-    value,
-    onChange,
-    uploadLabel,
-    onUpload,
-}: {
-    label: string;
-    value: string;
-    onChange: (value: string) => void;
-    uploadLabel: string;
-    onUpload: () => void;
-}) {
-    return (
-        <div className='join w-full'>
-            <label className='floating-label join-item flex-1'>
-                <span>{label}</span>
-                <input className='input input-md join-item w-full' value={value} placeholder={label} onChange={(event) => onChange(event.target.value)} />
-            </label>
-            <button type='button' className='btn btn-md btn-outline join-item' onClick={onUpload} disabled={!value.trim()}>
-                {uploadLabel}
-            </button>
-        </div>
-    );
-}
-
-function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
-    return (
-        <label className='label cursor-pointer justify-start gap-3 rounded-box border border-base-300 bg-base-100 px-4 py-3'>
-            <input type='checkbox' className='checkbox checkbox-sm' checked={checked} onChange={(event) => onChange(event.target.checked)} />
-            <span className='label-text'>{label}</span>
-        </label>
-    );
 }
 
 function isChecked(value: string | undefined) {
@@ -260,7 +196,7 @@ export default function QuizPageEditor({ sectionIndex, pageIndex }: PageEditorPr
 
     return (
         <div className='space-y-6'>
-            <section className='space-y-4 rounded-box border border-base-300 bg-base-200 p-4'>
+            <EditorPanel>
                 <div className='grid gap-4 md:grid-cols-2'>
                     <SelectField
                         label='Page Type'
@@ -313,9 +249,9 @@ export default function QuizPageEditor({ sectionIndex, pageIndex }: PageEditorPr
                         </option>
                     ))}
                 </SelectField>
-            </section>
+            </EditorPanel>
 
-            <section className='space-y-4 rounded-box border border-base-300 bg-base-200 p-4'>
+            <EditorPanel>
                 <div className='grid gap-4 md:grid-cols-2'>
                     <UploadField
                         label='Question Image'
@@ -323,6 +259,7 @@ export default function QuizPageEditor({ sectionIndex, pageIndex }: PageEditorPr
                         onChange={(value) => updateQuestionAttr('image', value || undefined)}
                         uploadLabel='Upload Question Image'
                         onUpload={() => importQuizAsset('quiz-image', questionAttrs?.image)}
+                        uploadDisabled={!questionAttrs?.image?.trim()}
                     />
                     <UploadField
                         label='Question Audio'
@@ -330,14 +267,15 @@ export default function QuizPageEditor({ sectionIndex, pageIndex }: PageEditorPr
                         onChange={(value) => updateQuestionAttr('audio', value || undefined)}
                         uploadLabel='Upload Question Audio'
                         onUpload={() => importQuizAsset('quiz-audio', questionAttrs?.audio)}
+                        uploadDisabled={!questionAttrs?.audio?.trim()}
                     />
                 </div>
                 <RichTextEditor label='Question' value={getQuestionValue(page)} onChange={updateQuestionValue} />
-            </section>
+            </EditorPanel>
 
             {(subtype === 'multipleChoiceSingle' || subtype === 'multipleChoiceMultiple') && (
                 <>
-                    <section className='space-y-3 rounded-box border border-base-300 bg-base-200 p-4'>
+                    <EditorPanel className='space-y-3 p-4'>
                         <div className='grid gap-3 md:grid-cols-2'>
                             <Toggle
                                 label='Retry enabled'
@@ -370,9 +308,9 @@ export default function QuizPageEditor({ sectionIndex, pageIndex }: PageEditorPr
                                 }
                             />
                         </div>
-                    </section>
+                    </EditorPanel>
 
-                    <section className='space-y-3 rounded-box border border-base-300 bg-base-200 p-4'>
+                    <EditorPanel className='space-y-3 p-4'>
                         <div className='flex items-center justify-between gap-3'>
                             <h3 className='text-base font-semibold'>Answers</h3>
                             <button
@@ -443,6 +381,7 @@ export default function QuizPageEditor({ sectionIndex, pageIndex }: PageEditorPr
                                         value={answer.$?.image ?? ''}
                                         uploadLabel='Upload Answer Image'
                                         onUpload={() => importQuizAsset('quiz-image', answer.$?.image)}
+                                        uploadDisabled={!answer.$?.image?.trim()}
                                         onChange={(value) => {
                                             const nextAnswers = [...answers];
                                             nextAnswers[index] = { ...answer, $: updateAttrs(answer.$, 'image', value) };
@@ -474,6 +413,7 @@ export default function QuizPageEditor({ sectionIndex, pageIndex }: PageEditorPr
                                         value={answer.$?.audio ?? ''}
                                         uploadLabel='Upload Answer Audio'
                                         onUpload={() => importQuizAsset('quiz-audio', answer.$?.audio)}
+                                        uploadDisabled={!answer.$?.audio?.trim()}
                                         onChange={(value) => {
                                             const nextAnswers = [...answers];
                                             nextAnswers[index] = { ...answer, $: updateAttrs(answer.$, 'audio', value) };
@@ -589,12 +529,12 @@ export default function QuizPageEditor({ sectionIndex, pageIndex }: PageEditorPr
                                 </button>
                             </div>
                         ))}
-                    </section>
+                    </EditorPanel>
                 </>
             )}
 
             {subtype === 'multipleChoiceMultiple' && (
-                <section className='space-y-4 rounded-box border border-base-300 bg-base-200 p-4'>
+                <EditorPanel>
                     <RichTextEditor
                         label='Correct Feedback'
                         value={page.multipleChoiceMultiple?.correctFeedback ?? ''}
@@ -623,11 +563,11 @@ export default function QuizPageEditor({ sectionIndex, pageIndex }: PageEditorPr
                         }
                         minHeightClassName='min-h-24'
                     />
-                </section>
+                </EditorPanel>
             )}
 
             {subtype === 'shortAnswer' && (
-                <section className='space-y-4 rounded-box border border-base-300 bg-base-200 p-4'>
+                <EditorPanel>
                     <RichTextEditor
                         label='Feedback'
                         value={page.shortAnswer?.feedback ?? ''}
@@ -641,11 +581,11 @@ export default function QuizPageEditor({ sectionIndex, pageIndex }: PageEditorPr
                             })
                         }
                     />
-                </section>
+                </EditorPanel>
             )}
 
             {subtype === 'fillInTheBlank' && (
-                <section className='space-y-4 rounded-box border border-base-300 bg-base-200 p-4'>
+                <EditorPanel>
                     <Field
                         label='Correct Answer'
                         value={page.fillInTheBlank?.answer ?? ''}
@@ -687,7 +627,7 @@ export default function QuizPageEditor({ sectionIndex, pageIndex }: PageEditorPr
                         }
                         minHeightClassName='min-h-24'
                     />
-                </section>
+                </EditorPanel>
             )}
         </div>
     );

@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type Ref } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { EditorPanel, Field, SelectField, Toggle, UploadField } from '@/app/components/EditorFormControls';
 import { showToast } from '@/app/utils/toast';
 import {
     createEmptyFrame,
@@ -31,105 +32,11 @@ function updateAttrs(attrs: XmlAttributes | undefined, field: string, value: str
     return nextAttrs;
 }
 
-function Field({
-    label,
-    value,
-    onChange,
-    placeholder = '',
-    onBlur,
-    inputRef,
-}: {
-    label: string;
-    value: string;
-    onChange: (value: string) => void;
-    placeholder?: string;
-    onBlur?: () => void;
-    inputRef?: Ref<HTMLInputElement>;
-}) {
-    return (
-        <label className='floating-label'>
-            <span>{label}</span>
-            <input
-                className='input input-md w-full'
-                value={value}
-                placeholder={placeholder || label}
-                onChange={(event) => onChange(event.target.value)}
-                onBlur={onBlur}
-                ref={inputRef}
-            />
-        </label>
-    );
-}
-
-function SelectField({
-    label,
-    value,
-    onChange,
-    children,
-}: {
-    label: string;
-    value: string;
-    onChange: (value: string) => void;
-    children: React.ReactNode;
-}) {
-    return (
-        <label className='floating-label'>
-            <span>{label}</span>
-            <select className='select select-bordered w-full' value={value} onChange={(event) => onChange(event.target.value)}>
-                {children}
-            </select>
-        </label>
-    );
-}
-
-function UploadField({
-    label,
-    value,
-    onChange,
-    placeholder,
-    uploadLabel,
-    onUpload,
-    uploadDisabled = false,
-}: {
-    label: string;
-    value: string;
-    onChange: (value: string) => void;
-    placeholder?: string;
-    uploadLabel: string;
-    onUpload: () => void;
-    uploadDisabled?: boolean;
-}) {
-    return (
-        <div className='flex flex-row gap-4'>
-        <label className='input floating-label flex-1'>
-            <span>{label}</span>
-            <input
-                value={value}
-                placeholder={placeholder || label}
-                onChange={(event) => onChange(event.target.value)}
-            />
-        </label>
-        <button type='button' className='btn btn-md btn-soft' onClick={onUpload} disabled={uploadDisabled}>
-            {uploadLabel}
-        </button>
-        </div>
-    );
-}
-
 function TextBlock({ label, value, onChange, rows = 3 }: { label: string; value: string; onChange: (value: string) => void; rows?: number }) {
     return (
         <label className='floating-label'>
             <span>{label}</span>
             <textarea className='textarea w-full' rows={rows} value={value} placeholder={label} onChange={(event) => onChange(event.target.value)} />
-        </label>
-    );
-}
-
-function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
-    return (
-        <label className='label cursor-pointer justify-start gap-3 rounded-box border border-base-300 bg-base-100 px-4 py-3 flex-1'>
-            <input type='checkbox' className='checkbox checkbox-sm' checked={checked} onChange={(event) => onChange(event.target.checked)} />
-            <span className='label-text'>{label}</span>
         </label>
     );
 }
@@ -327,16 +234,16 @@ function SourcePreview({ page, pageType, presentationPath, imageFormat, refreshK
 
     if (!source) {
         return (
-            <section className='rounded-box border border-base-300 bg-base-200 p-4'>
+            <EditorPanel className='p-4'>
                 <h3 className='mb-2 text-base font-semibold'>Source Preview</h3>
                 <p className='text-sm opacity-70'>Add a source to preview this page.</p>
-            </section>
+            </EditorPanel>
         );
     }
 
     if (pageType === 'image' || pageType === 'image-audio' || pageType === 'bundle') {
         return (
-            <section className='space-y-3 rounded-box border border-base-300 bg-base-200 p-4'>
+            <EditorPanel className='space-y-3 p-4'>
                 <h3 className='sr-only'>Source Preview</h3>
                 {previewSrc && !imageFailed ? (
                     <div className='aspect-video w-full overflow-hidden border border-base-300 bg-base-100'>
@@ -359,13 +266,13 @@ function SourcePreview({ page, pageType, presentationPath, imageFormat, refreshK
                         <audio controls className='w-full' src={audioPreviewSrc} />
                     </div>
                 )}
-            </section>
+            </EditorPanel>
         );
     }
 
     if (pageType === 'video') {
         return (
-            <section className='space-y-3 rounded-box border border-base-300 bg-base-200 p-4'>
+            <EditorPanel className='space-y-3 p-4'>
                 <h3 className='sr-only'>Source Preview</h3>
                 {previewUrl ? (
                     <div className='aspect-video w-full overflow-hidden border border-base-300 bg-black'>
@@ -374,13 +281,13 @@ function SourcePreview({ page, pageType, presentationPath, imageFormat, refreshK
                 ) : (
                     <p className='text-sm opacity-70'>Preview unavailable for this source.</p>
                 )}
-            </section>
+            </EditorPanel>
         );
     }
 
     if (pageType === 'youtube' || pageType === 'html') {
         return (
-            <section className='space-y-3 rounded-box border border-base-300 bg-base-200 p-4'>
+            <EditorPanel className='space-y-3 p-4'>
                 <h3 className='sr-only'>Source Preview</h3>
                 {previewUrl ? (
                     <div className='aspect-video w-full overflow-hidden border border-base-300 bg-base-100'>
@@ -394,16 +301,16 @@ function SourcePreview({ page, pageType, presentationPath, imageFormat, refreshK
                 ) : (
                     <p className='text-sm opacity-70'>Preview unavailable for this source.</p>
                 )}
-            </section>
+            </EditorPanel>
         );
     }
 
     return (
-        <section className='space-y-2 rounded-box border border-base-300 bg-base-200 p-4'>
+        <EditorPanel className='space-y-2 p-4'>
             <h3 className='text-base font-semibold'>Source Preview</h3>
             <p className='text-sm opacity-70'>Live preview is not available for this provider yet.</p>
             <div className='border border-base-300 bg-base-100 px-3 py-2 font-mono text-xs'>{source}</div>
-        </section>
+        </EditorPanel>
     );
 }
 
@@ -588,7 +495,7 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
 
     return (
         <div className='space-y-6'>
-            <section className='space-y-4 rounded-box border border-base-300 bg-base-200 px-4 pt-6 pb-4'>
+            <EditorPanel className='space-y-4 px-4 pt-6 pb-4'>
                 <div className="space-y-6">
                     <div className='flex gap-4'>
                         <div className="w-50">
@@ -708,7 +615,7 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
                         />
                     )}
                 </div>
-            </section>
+            </EditorPanel>
 
             {!caps.supportsFrames && (
                 <SourcePreview
