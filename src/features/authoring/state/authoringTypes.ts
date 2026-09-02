@@ -2,7 +2,7 @@ import type { StorybookXml } from '@/types/sbplus';
 import type { Page } from '@/types/sbplus';
 import type { QuizSubtype, SupportedPageType } from '@/features/authoring/model/pageModel';
 
-export interface EditorState {
+export interface AuthoringState {
     presentationPath: string;
     xml: StorybookXml | null;
 
@@ -12,7 +12,7 @@ export interface EditorState {
     dirty: boolean; // true when unsaved changes exist
 }
 
-export type EditorAction =
+export type AuthoringAction =
     | { type: 'loadXml'; payload: { presentationPath: string; xml: StorybookXml } }
     | { type: 'setPresentationPath'; payload: { presentationPath: string } }
     | { type: 'selectSetup' }

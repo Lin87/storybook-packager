@@ -2,14 +2,14 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useEditor } from '@/features/authoring/state/AuthoringProvider';
+import { useAuthoring } from '@/features/authoring/state/AuthoringProvider';
 import PanelRouter from '@/features/authoring/panels/PanelRouter';
 import Sidebar, { SidebarHandle } from '@/features/authoring/sidebar/Sidebar';
 import { showToast } from '@/components/toast';
 
 export default function AuthoringScreen() {
     const searchParams = useSearchParams();
-    const { state, dispatch } = useEditor();
+    const { state, dispatch } = useAuthoring();
 
     const pathParam = searchParams.get('path');
     const [error, setError] = useState<string | null>(null);

@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useEditor } from '@/features/authoring/state/AuthoringProvider';
+import { useAuthoring } from '@/features/authoring/state/AuthoringProvider';
 import type { Page } from '@/types/sbplus';
 
 function asArray<T>(value: T | T[] | undefined): T[] {
@@ -10,7 +10,7 @@ function asArray<T>(value: T | T[] | undefined): T[] {
 }
 
 export function usePageEditorState(sectionIndex: number, pageIndex: number) {
-    const { state, dispatch } = useEditor();
+    const { state, dispatch } = useAuthoring();
 
     const page = useMemo<Page | null>(() => {
         if (!state.xml) return null;

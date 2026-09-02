@@ -103,12 +103,12 @@ export function Toggle({ label, checked, onChange }: ToggleProps) {
     );
 }
 
-interface EditorPanelProps {
+interface PanelProps {
     children: ReactNode;
     className?: string;
 }
 
-export function EditorPanel({ children, className = 'space-y-4 p-4' }: EditorPanelProps) {
+export function Panel({ children, className = 'space-y-4 p-4' }: PanelProps) {
     return (
         <section className={clsx('rounded-box border border-base-300 bg-base-200', className)}>
             {children}

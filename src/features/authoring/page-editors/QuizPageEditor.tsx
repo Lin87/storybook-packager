@@ -1,6 +1,6 @@
 'use client';
 
-import { ArraySection, EditorPanel, Field, SelectField, Toggle, UploadField } from '@/components/FormControls';
+import { ArraySection, Panel, Field, SelectField, Toggle, UploadField } from '@/components/FormControls';
 import { showToast } from '@/components/toast';
 import {
     createEmptyAnswer,
@@ -196,7 +196,7 @@ export default function QuizPageEditor({ sectionIndex, pageIndex }: PageEditorPr
 
     return (
         <div className='space-y-6'>
-            <EditorPanel className='space-y-6 px-4 pt-6 pb-4'>
+            <Panel className='space-y-6 px-4 pt-6 pb-4'>
                 <div className='flex flew-row gap-4'>
                     <div className="w-50">
                         <SelectField
@@ -253,9 +253,9 @@ export default function QuizPageEditor({ sectionIndex, pageIndex }: PageEditorPr
                         </option>
                     ))}
                 </SelectField>
-            </EditorPanel>
+            </Panel>
 
-            <EditorPanel>
+            <Panel>
                 <RichTextEditor label='Question' value={getQuestionValue(page)} onChange={updateQuestionValue} />
                 <UploadField
                     label='Question Image'
@@ -273,11 +273,11 @@ export default function QuizPageEditor({ sectionIndex, pageIndex }: PageEditorPr
                     onUpload={() => importQuizAsset('quiz-audio', questionAttrs?.audio)}
                     uploadDisabled={!questionAttrs?.audio?.trim()}
                 />
-            </EditorPanel>
+            </Panel>
 
             {(subtype === 'multipleChoiceSingle' || subtype === 'multipleChoiceMultiple') && (
                 <>
-                    <EditorPanel>
+                    <Panel>
                         <div className='flex flex-row gap-4'>
                             <div className="flex-1">
                                 <Toggle
@@ -314,9 +314,9 @@ export default function QuizPageEditor({ sectionIndex, pageIndex }: PageEditorPr
                                 />
                             </div>
                         </div>
-                    </EditorPanel>
+                    </Panel>
 
-                    <EditorPanel>
+                    <Panel>
                         <h3 className='text-base font-semibold'>Answers</h3>
                         <ArraySection
                             addLabel='Add Answer'
@@ -525,12 +525,12 @@ export default function QuizPageEditor({ sectionIndex, pageIndex }: PageEditorPr
                                 </div>
                             ))}
                         </ArraySection>
-                    </EditorPanel>
+                    </Panel>
                 </>
             )}
 
             {subtype === 'multipleChoiceMultiple' && (
-                <EditorPanel>
+                <Panel>
                     <RichTextEditor
                         label='Correct Feedback'
                         value={page.multipleChoiceMultiple?.correctFeedback ?? ''}
@@ -559,11 +559,11 @@ export default function QuizPageEditor({ sectionIndex, pageIndex }: PageEditorPr
                         }
                         minHeightClassName='min-h-24'
                     />
-                </EditorPanel>
+                </Panel>
             )}
 
             {subtype === 'shortAnswer' && (
-                <EditorPanel>
+                <Panel>
                     <RichTextEditor
                         label='Feedback'
                         value={page.shortAnswer?.feedback ?? ''}
@@ -577,11 +577,11 @@ export default function QuizPageEditor({ sectionIndex, pageIndex }: PageEditorPr
                             })
                         }
                     />
-                </EditorPanel>
+                </Panel>
             )}
 
             {subtype === 'fillInTheBlank' && (
-                <EditorPanel>
+                <Panel>
                     <Field
                         label='Correct Answer'
                         value={page.fillInTheBlank?.answer ?? ''}
@@ -623,7 +623,7 @@ export default function QuizPageEditor({ sectionIndex, pageIndex }: PageEditorPr
                         }
                         minHeightClassName='min-h-24'
                     />
-                </EditorPanel>
+                </Panel>
             )}
         </div>
     );

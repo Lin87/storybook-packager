@@ -3,7 +3,7 @@
 import clsx from 'clsx';
 import { useEffect, useRef } from 'react';
 import type { RefObject } from 'react';
-import { useEditor } from '@/features/authoring/state/AuthoringProvider';
+import { useAuthoring } from '@/features/authoring/state/AuthoringProvider';
 import SetupPanel from './SetupPanel';
 import SectionPanel from './SectionPanel';
 import PagePanel from './PagePanel';
@@ -14,7 +14,7 @@ interface PanelRouterProps {
 }
 
 export default function PanelRouter({ sidebarRef }: PanelRouterProps) {
-    const { state } = useEditor();
+    const { state } = useAuthoring();
     const scrollRef = useRef<HTMLDivElement>(null);
 
     const isSetupSelected = state.selectedSectionIndex === null && state.selectedPageIndex === null;

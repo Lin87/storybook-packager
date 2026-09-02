@@ -1,6 +1,6 @@
 'use client';
 
-import { useEditor } from '@/features/authoring/state/AuthoringProvider';
+import { useAuthoring } from '@/features/authoring/state/AuthoringProvider';
 import { ChevronDoubleRight } from 'react-bootstrap-icons';
 import type { RefObject } from 'react';
 import { SidebarHandle } from '../sidebar/Sidebar';
@@ -10,7 +10,7 @@ interface SectionEditorProps {
 }
 
 export default function SectionEditor({ sidebarRef }: SectionEditorProps) {
-    const { state, dispatch } = useEditor();
+    const { state, dispatch } = useAuthoring();
 
     const sIndex = state.selectedSectionIndex!;
     const section = Array.isArray(state.xml!.storybook.section) ? state.xml!.storybook.section[sIndex] : state.xml!.storybook.section;

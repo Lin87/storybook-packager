@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useEditor } from '@/features/authoring/state/AuthoringProvider';
+import { useAuthoring } from '@/features/authoring/state/AuthoringProvider';
 import { getPageEditorRegistration } from '../page-editors/registry';
 
 function asArray<T>(v: T | T[] | undefined): T[] {
@@ -10,7 +10,7 @@ function asArray<T>(v: T | T[] | undefined): T[] {
 }
 
 export default function PagePanel() {
-    const { state } = useEditor();
+    const { state } = useAuthoring();
 
     const sIndex = state.selectedSectionIndex;
     const pIndex = state.selectedPageIndex;

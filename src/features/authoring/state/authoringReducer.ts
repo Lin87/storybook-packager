@@ -1,6 +1,6 @@
 import { convertPageType, convertQuizSubtype, createDefaultPage } from '@/features/authoring/model/pageModel';
 import type { Page, Section } from '@/types/sbplus';
-import type { EditorAction, EditorState } from './authoringTypes';
+import type { AuthoringAction, AuthoringState } from './authoringTypes';
 
 function arrayMove<T>(arr: T[], from: number, to: number): T[] {
     const copy = [...arr];
@@ -14,11 +14,11 @@ function asArray<T>(value: T | T[] | undefined): T[] {
     return Array.isArray(value) ? value : [value];
 }
 
-function getSections(state: EditorState): Section[] {
+function getSections(state: AuthoringState): Section[] {
     return state.xml ? asArray(state.xml.storybook.section) : [];
 }
 
-function updateSections(state: EditorState, sections: Section[]): EditorState {
+function updateSections(state: AuthoringState, sections: Section[]): AuthoringState {
     if (!state.xml) return state;
 
     return {
@@ -34,7 +34,7 @@ function updateSections(state: EditorState, sections: Section[]): EditorState {
     };
 }
 
-function updatePageAt(state: EditorState, sectionIndex: number, pageIndex: number, updater: (page: Page) => Page): EditorState {
+function updatePageAt(state: AuthoringState, sectionIndex: number, pageIndex: number, updater: (page: Page) => Page): AuthoringState {
     const sections = getSections(state);
     if (sectionIndex < 0 || sectionIndex >= sections.length) return state;
 
@@ -48,7 +48,7 @@ function updatePageAt(state: EditorState, sectionIndex: number, pageIndex: numbe
     return updateSections(state, nextSections);
 }
 
-export const initialEditorState: EditorState = {
+export const initialAuthoringState: AuthoringState = {
     presentationPath: '',
     xml: null,
     selectedSectionIndex: null,
@@ -56,7 +56,7 @@ export const initialEditorState: EditorState = {
     dirty: false,
 };
 
-export function editorReducer(state: EditorState, action: EditorAction): EditorState {
+export function authoringReducer(state: AuthoringState, action: AuthoringAction): AuthoringState {
     switch (action.type) {
         case 'loadXml':
             return {

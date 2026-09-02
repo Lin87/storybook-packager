@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArraySection, EditorPanel, Field, SelectField, Toggle, UploadField } from '@/components/FormControls';
+import { ArraySection, Panel, Field, SelectField, Toggle, UploadField } from '@/components/FormControls';
 import { showToast } from '@/components/toast';
 import {
     createEmptyFrame,
@@ -223,16 +223,16 @@ function SourcePreview({ page, pageType, presentationPath, imageFormat, refreshK
 
     if (!source) {
         return (
-            <EditorPanel className='p-4'>
+            <Panel className='p-4'>
                 <h3 className='mb-2 text-base font-semibold'>Source Preview</h3>
                 <p className='text-sm opacity-70'>Add a source to preview this page.</p>
-            </EditorPanel>
+            </Panel>
         );
     }
 
     if (pageType === 'image' || pageType === 'image-audio' || pageType === 'bundle') {
         return (
-            <EditorPanel className='space-y-3 p-4'>
+            <Panel className='space-y-3 p-4'>
                 <h3 className='sr-only'>Source Preview</h3>
                 {previewSrc && !imageFailed ? (
                     <div className='aspect-video w-full overflow-hidden border border-base-300 bg-base-100'>
@@ -255,13 +255,13 @@ function SourcePreview({ page, pageType, presentationPath, imageFormat, refreshK
                         <audio controls className='w-full' src={audioPreviewSrc} />
                     </div>
                 )}
-            </EditorPanel>
+            </Panel>
         );
     }
 
     if (pageType === 'video') {
         return (
-            <EditorPanel className='space-y-3 p-4'>
+            <Panel className='space-y-3 p-4'>
                 <h3 className='sr-only'>Source Preview</h3>
                 {previewUrl ? (
                     <div className='aspect-video w-full overflow-hidden border border-base-300 bg-black'>
@@ -270,13 +270,13 @@ function SourcePreview({ page, pageType, presentationPath, imageFormat, refreshK
                 ) : (
                     <p className='text-sm opacity-70'>Preview unavailable for this source.</p>
                 )}
-            </EditorPanel>
+            </Panel>
         );
     }
 
     if (pageType === 'youtube' || pageType === 'html') {
         return (
-            <EditorPanel className='space-y-3 p-4'>
+            <Panel className='space-y-3 p-4'>
                 <h3 className='sr-only'>Source Preview</h3>
                 {previewUrl ? (
                     <div className='aspect-video w-full overflow-hidden border border-base-300 bg-base-100'>
@@ -290,16 +290,16 @@ function SourcePreview({ page, pageType, presentationPath, imageFormat, refreshK
                 ) : (
                     <p className='text-sm opacity-70'>Preview unavailable for this source.</p>
                 )}
-            </EditorPanel>
+            </Panel>
         );
     }
 
     return (
-        <EditorPanel className='space-y-2 p-4'>
+        <Panel className='space-y-2 p-4'>
             <h3 className='text-base font-semibold'>Source Preview</h3>
             <p className='text-sm opacity-70'>Live preview is not available for this provider yet.</p>
             <div className='border border-base-300 bg-base-100 px-3 py-2 font-mono text-xs'>{source}</div>
-        </EditorPanel>
+        </Panel>
     );
 }
 
@@ -484,7 +484,7 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
 
     return (
         <div className='space-y-6'>
-            <EditorPanel className='space-y-4 px-4 pt-6 pb-4'>
+            <Panel className='space-y-4 px-4 pt-6 pb-4'>
                 <div className="space-y-6">
                     <div className='flex gap-4'>
                         <div className="w-50">
@@ -604,7 +604,7 @@ export default function StandardPageEditor({ sectionIndex, pageIndex }: PageEdit
                         />
                     )}
                 </div>
-            </EditorPanel>
+            </Panel>
 
             {!caps.supportsFrames && (
                 <SourcePreview

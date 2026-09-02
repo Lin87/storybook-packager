@@ -2,7 +2,7 @@ import { useRef, useState, useEffect } from 'react';
 import type { DragOverEvent, DragEndEvent, DragStartEvent, DragMoveEvent } from '@dnd-kit/core';
 import type { Dispatch, RefObject, SetStateAction } from 'react';
 import type { Section } from '@/types/sbplus';
-import type { EditorAction } from '@/features/authoring/state/authoringTypes';
+import type { AuthoringAction } from '@/features/authoring/state/authoringTypes';
 
 export type SectionDragItem = { type: 'section'; sectionIndex: number };
 export type PageDragItem = { type: 'page'; sectionIndex: number; pageIndex: number };
@@ -14,7 +14,7 @@ interface UseSidebarDnDProps {
     sections: Section[];
     collapsedSections: Record<number, boolean>;
     setCollapsedSections: Dispatch<SetStateAction<Record<number, boolean>>>;
-    dispatch: Dispatch<EditorAction>;
+    dispatch: Dispatch<AuthoringAction>;
     scrollContainerRef: RefObject<HTMLDivElement | null>;
 }
 

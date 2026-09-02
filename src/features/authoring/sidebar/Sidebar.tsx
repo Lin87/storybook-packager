@@ -9,7 +9,7 @@ import ConfirmDialog from '@/components/ConfirmDialog';
 import DeleteButton from '@/components/DeleteButton';
 import DragHandle from '@/components/DragHandle';
 import { showToast } from '@/components/toast';
-import { useEditor } from '@/features/authoring/state/AuthoringProvider';
+import { useAuthoring } from '@/features/authoring/state/AuthoringProvider';
 
 import { FileEarmarkZip, ChevronDown, ChevronRight, FolderCheck, Gear } from 'react-bootstrap-icons';
 
@@ -76,7 +76,7 @@ function SectionPageDropZone({ sectionIndex, children }: { sectionIndex: number;
 ========================================================= */
 
 const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
-    const { state, dispatch } = useEditor();
+    const { state, dispatch } = useAuthoring();
     const xml = state.xml;
 
     const scrollRef = useRef<HTMLDivElement>(null);

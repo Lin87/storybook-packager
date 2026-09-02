@@ -1,11 +1,11 @@
 'use client';
 
 import { showToast } from '@/components/toast';
-import { useEditor } from '@/features/authoring/state/AuthoringProvider';
+import { useAuthoring } from '@/features/authoring/state/AuthoringProvider';
 import type { Setup } from '@/types/sbplus';
 
 export default function SetupEditor() {
-    const { state, dispatch } = useEditor();
+    const { state, dispatch } = useAuthoring();
 
     const setup = state.xml!.storybook.setup ?? ({} as Setup);
 

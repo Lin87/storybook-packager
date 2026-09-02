@@ -1,9 +1,9 @@
-import EditorProvider from '@/features/authoring/state/AuthoringProvider';
+import AuthoringProvider from '@/features/authoring/state/AuthoringProvider';
 
 export default function EditorLayout({ children }: { children: React.ReactNode }) {
     return (
-        <EditorProvider>
+        <AuthoringProvider>
             <div className='h-full w-full flex flex-col'>{children}</div>
-        </EditorProvider>
+        </AuthoringProvider>
     );
 }
