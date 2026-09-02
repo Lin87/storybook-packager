@@ -1,6 +1,6 @@
 'use client';
 
-import { EditorPanel, Field, SelectField, Toggle, UploadField } from '@/app/components/EditorFormControls';
+import { ArraySection, EditorPanel, Field, SelectField, Toggle, UploadField } from '@/app/components/EditorFormControls';
 import { showToast } from '@/app/utils/toast';
 import {
     createEmptyAnswer,
@@ -196,38 +196,42 @@ export default function QuizPageEditor({ sectionIndex, pageIndex }: PageEditorPr
 
     return (
         <div className='space-y-6'>
-            <EditorPanel>
-                <div className='grid gap-4 md:grid-cols-2'>
-                    <SelectField
-                        label='Page Type'
-                        value='quiz'
-                        onChange={(value) =>
-                            dispatch({
-                                type: 'changePageType',
-                                payload: {
-                                    sectionIndex,
-                                    pageIndex,
-                                    pageType: value as SupportedPageType,
-                                },
-                            })
-                        }>
-                            {PAGE_TYPES.map((type) => (
-                                <option key={type} value={type}>
-                                    {PAGE_TYPE_LABELS[type]}
-                                </option>
-                            ))}
-                    </SelectField>
+            <EditorPanel className='space-y-6 px-4 pt-6 pb-4'>
+                <div className='flex flew-row gap-4'>
+                    <div className="w-50">
+                        <SelectField
+                            label='Page Type'
+                            value='quiz'
+                            onChange={(value) =>
+                                dispatch({
+                                    type: 'changePageType',
+                                    payload: {
+                                        sectionIndex,
+                                        pageIndex,
+                                        pageType: value as SupportedPageType,
+                                    },
+                                })
+                            }>
+                                {PAGE_TYPES.map((type) => (
+                                    <option key={type} value={type}>
+                                        {PAGE_TYPE_LABELS[type]}
+                                    </option>
+                                ))}
+                        </SelectField>
+                    </div>
 
-                    <Field
-                        label='Title'
-                        value={page.$?.title ?? ''}
-                        onChange={(value) =>
-                            dispatch({
-                                type: 'updatePageAttr',
-                                payload: { sectionIndex, pageIndex, field: 'title', value },
-                            })
-                        }
-                    />
+                    <div className="flex-1">
+                        <Field
+                            label='Title'
+                            value={page.$?.title ?? ''}
+                            onChange={(value) =>
+                                dispatch({
+                                    type: 'updatePageAttr',
+                                    payload: { sectionIndex, pageIndex, field: 'title', value },
+                                })
+                            }
+                        />
+                    </div>
                 </div>
 
                 <SelectField
@@ -252,104 +256,99 @@ export default function QuizPageEditor({ sectionIndex, pageIndex }: PageEditorPr
             </EditorPanel>
 
             <EditorPanel>
-                <div className='grid gap-4 md:grid-cols-2'>
-                    <UploadField
-                        label='Question Image'
-                        value={questionAttrs?.image ?? ''}
-                        onChange={(value) => updateQuestionAttr('image', value || undefined)}
-                        uploadLabel='Upload Question Image'
-                        onUpload={() => importQuizAsset('quiz-image', questionAttrs?.image)}
-                        uploadDisabled={!questionAttrs?.image?.trim()}
-                    />
-                    <UploadField
-                        label='Question Audio'
-                        value={questionAttrs?.audio ?? ''}
-                        onChange={(value) => updateQuestionAttr('audio', value || undefined)}
-                        uploadLabel='Upload Question Audio'
-                        onUpload={() => importQuizAsset('quiz-audio', questionAttrs?.audio)}
-                        uploadDisabled={!questionAttrs?.audio?.trim()}
-                    />
-                </div>
                 <RichTextEditor label='Question' value={getQuestionValue(page)} onChange={updateQuestionValue} />
+                <UploadField
+                    label='Question Image'
+                    value={questionAttrs?.image ?? ''}
+                    onChange={(value) => updateQuestionAttr('image', value || undefined)}
+                    uploadLabel='Upload Question Image'
+                    onUpload={() => importQuizAsset('quiz-image', questionAttrs?.image)}
+                    uploadDisabled={!questionAttrs?.image?.trim()}
+                />
+                <UploadField
+                    label='Question Audio'
+                    value={questionAttrs?.audio ?? ''}
+                    onChange={(value) => updateQuestionAttr('audio', value || undefined)}
+                    uploadLabel='Upload Question Audio'
+                    onUpload={() => importQuizAsset('quiz-audio', questionAttrs?.audio)}
+                    uploadDisabled={!questionAttrs?.audio?.trim()}
+                />
             </EditorPanel>
 
             {(subtype === 'multipleChoiceSingle' || subtype === 'multipleChoiceMultiple') && (
                 <>
-                    <EditorPanel className='space-y-3 p-4'>
-                        <div className='grid gap-3 md:grid-cols-2'>
-                            <Toggle
-                                label='Retry enabled'
-                                checked={isChecked(subtype === 'multipleChoiceSingle' ? page.multipleChoiceSingle?.$?.retry : page.multipleChoiceMultiple?.$?.retry)}
-                                onChange={(checked) =>
-                                    replacePage({
-                                        ...page,
-                                        [subtype]: {
-                                            ...(page[subtype] as NonNullable<Page['multipleChoiceSingle'] | Page['multipleChoiceMultiple']>),
-                                            $: updateAttrs((page[subtype] as NonNullable<Page['multipleChoiceSingle'] | Page['multipleChoiceMultiple']>).$, 'retry', checked ? 'true' : 'false'),
-                                        },
-                                    })
-                                }
-                            />
-                            <Toggle
-                                label='Randomize answers'
-                                checked={isChecked(subtype === 'multipleChoiceSingle' ? page.multipleChoiceSingle?.choices?.$?.random : page.multipleChoiceMultiple?.choices?.$?.random)}
-                                onChange={(checked) =>
-                                    replacePage({
-                                        ...page,
-                                        [subtype]: {
-                                            ...(page[subtype] as NonNullable<Page['multipleChoiceSingle'] | Page['multipleChoiceMultiple']>),
-                                            choices: {
-                                                ...(page[subtype] as NonNullable<Page['multipleChoiceSingle'] | Page['multipleChoiceMultiple']>).choices,
-                                                $: updateAttrs((page[subtype] as NonNullable<Page['multipleChoiceSingle'] | Page['multipleChoiceMultiple']>).choices.$, 'random', checked ? 'yes' : 'false'),
-                                                answer: answers,
+                    <EditorPanel>
+                        <div className='flex flex-row gap-4'>
+                            <div className="flex-1">
+                                <Toggle
+                                    label='Retry enabled'
+                                    checked={isChecked(subtype === 'multipleChoiceSingle' ? page.multipleChoiceSingle?.$?.retry : page.multipleChoiceMultiple?.$?.retry)}
+                                    onChange={(checked) =>
+                                        replacePage({
+                                            ...page,
+                                            [subtype]: {
+                                                ...(page[subtype] as NonNullable<Page['multipleChoiceSingle'] | Page['multipleChoiceMultiple']>),
+                                                $: updateAttrs((page[subtype] as NonNullable<Page['multipleChoiceSingle'] | Page['multipleChoiceMultiple']>).$, 'retry', checked ? 'true' : 'false'),
                                             },
-                                        },
-                                    })
-                                }
-                            />
+                                        })
+                                    }
+                                />
+                            </div>
+                            <div className="flex-1">
+                                <Toggle
+                                    label='Randomize answers'
+                                    checked={isChecked(subtype === 'multipleChoiceSingle' ? page.multipleChoiceSingle?.choices?.$?.random : page.multipleChoiceMultiple?.choices?.$?.random)}
+                                    onChange={(checked) =>
+                                        replacePage({
+                                            ...page,
+                                            [subtype]: {
+                                                ...(page[subtype] as NonNullable<Page['multipleChoiceSingle'] | Page['multipleChoiceMultiple']>),
+                                                choices: {
+                                                    ...(page[subtype] as NonNullable<Page['multipleChoiceSingle'] | Page['multipleChoiceMultiple']>).choices,
+                                                    $: updateAttrs((page[subtype] as NonNullable<Page['multipleChoiceSingle'] | Page['multipleChoiceMultiple']>).choices.$, 'random', checked ? 'yes' : 'false'),
+                                                    answer: answers,
+                                                },
+                                            },
+                                        })
+                                    }
+                                />
+                            </div>
                         </div>
                     </EditorPanel>
 
-                    <EditorPanel className='space-y-3 p-4'>
-                        <div className='flex items-center justify-between gap-3'>
-                            <h3 className='text-base font-semibold'>Answers</h3>
-                            <button
-                                type='button'
-                                className='btn btn-sm btn-outline'
-                                onClick={() => {
-                                    const nextAnswers = [...answers, createEmptyAnswer()];
-                                    if (subtype === 'multipleChoiceSingle') {
-                                        replacePage({
-                                            ...page,
-                                            multipleChoiceSingle: {
-                                                ...page.multipleChoiceSingle!,
-                                                choices: {
-                                                    ...page.multipleChoiceSingle!.choices,
-                                                    answer: nextAnswers,
-                                                },
-                                            },
-                                        });
-                                        return;
-                                    }
-
+                    <EditorPanel>
+                        <h3 className='text-base font-semibold'>Answers</h3>
+                        <ArraySection
+                            addLabel='Add Answer'
+                            onAdd={() => {
+                                const nextAnswers = [...answers, createEmptyAnswer()];
+                                if (subtype === 'multipleChoiceSingle') {
                                     replacePage({
                                         ...page,
-                                        multipleChoiceMultiple: {
-                                            ...page.multipleChoiceMultiple!,
+                                        multipleChoiceSingle: {
+                                            ...page.multipleChoiceSingle!,
                                             choices: {
-                                                ...page.multipleChoiceMultiple!.choices,
+                                                ...page.multipleChoiceSingle!.choices,
                                                 answer: nextAnswers,
                                             },
                                         },
                                     });
-                                }}>
-                                Add Answer
-                            </button>
-                        </div>
+                                    return;
+                                }
 
-                        {answers.map((answer, index) => (
-                            <div key={index} className='space-y-3 rounded-box border border-base-300 bg-base-100 p-3'>
-                                <div className='grid gap-3 md:grid-cols-2'>
+                                replacePage({
+                                    ...page,
+                                    multipleChoiceMultiple: {
+                                        ...page.multipleChoiceMultiple!,
+                                        choices: {
+                                            ...page.multipleChoiceMultiple!.choices,
+                                            answer: nextAnswers,
+                                        },
+                                    },
+                                });
+                            }}>
+                            {answers.map((answer, index) => (
+                                <div key={index} className='space-y-4 rounded-box border border-base-300 bg-base-100 p-3'>
                                     <Field
                                         label='Answer Text'
                                         value={answer.value ?? ''}
@@ -376,67 +375,64 @@ export default function QuizPageEditor({ sectionIndex, pageIndex }: PageEditorPr
                                             });
                                         }}
                                     />
-                                    <UploadField
-                                        label='Answer Image'
-                                        value={answer.$?.image ?? ''}
-                                        uploadLabel='Upload Answer Image'
-                                        onUpload={() => importQuizAsset('quiz-image', answer.$?.image)}
-                                        uploadDisabled={!answer.$?.image?.trim()}
-                                        onChange={(value) => {
-                                            const nextAnswers = [...answers];
-                                            nextAnswers[index] = { ...answer, $: updateAttrs(answer.$, 'image', value) };
-                                            if (subtype === 'multipleChoiceSingle') {
+                                    <div className="flex flex-row gap-4">
+                                        <UploadField
+                                            label='Answer Image'
+                                            value={answer.$?.image ?? ''}
+                                            uploadLabel='Upload Answer Image'
+                                            onUpload={() => importQuizAsset('quiz-image', answer.$?.image)}
+                                            uploadDisabled={!answer.$?.image?.trim()}
+                                            onChange={(value) => {
+                                                const nextAnswers = [...answers];
+                                                nextAnswers[index] = { ...answer, $: updateAttrs(answer.$, 'image', value) };
+                                                if (subtype === 'multipleChoiceSingle') {
+                                                    replacePage({
+                                                        ...page,
+                                                        multipleChoiceSingle: {
+                                                            ...page.multipleChoiceSingle!,
+                                                            choices: { ...page.multipleChoiceSingle!.choices, answer: nextAnswers },
+                                                        },
+                                                    });
+                                                    return;
+                                                }
                                                 replacePage({
                                                     ...page,
-                                                    multipleChoiceSingle: {
-                                                        ...page.multipleChoiceSingle!,
-                                                        choices: { ...page.multipleChoiceSingle!.choices, answer: nextAnswers },
+                                                    multipleChoiceMultiple: {
+                                                        ...page.multipleChoiceMultiple!,
+                                                        choices: { ...page.multipleChoiceMultiple!.choices, answer: nextAnswers },
                                                     },
                                                 });
-                                                return;
-                                            }
-
-                                            replacePage({
-                                                ...page,
-                                                multipleChoiceMultiple: {
-                                                    ...page.multipleChoiceMultiple!,
-                                                    choices: { ...page.multipleChoiceMultiple!.choices, answer: nextAnswers },
-                                                },
-                                            });
-                                        }}
-                                    />
-                                </div>
-
-                                <div className='grid gap-3 md:grid-cols-2'>
-                                    <UploadField
-                                        label='Answer Audio'
-                                        value={answer.$?.audio ?? ''}
-                                        uploadLabel='Upload Answer Audio'
-                                        onUpload={() => importQuizAsset('quiz-audio', answer.$?.audio)}
-                                        uploadDisabled={!answer.$?.audio?.trim()}
-                                        onChange={(value) => {
-                                            const nextAnswers = [...answers];
-                                            nextAnswers[index] = { ...answer, $: updateAttrs(answer.$, 'audio', value) };
-                                            if (subtype === 'multipleChoiceSingle') {
+                                            }}
+                                        />
+                                        <UploadField
+                                            label='Answer Audio'
+                                            value={answer.$?.audio ?? ''}
+                                            uploadLabel='Upload Answer Audio'
+                                            onUpload={() => importQuizAsset('quiz-audio', answer.$?.audio)}
+                                            uploadDisabled={!answer.$?.audio?.trim()}
+                                            onChange={(value) => {
+                                                const nextAnswers = [...answers];
+                                                nextAnswers[index] = { ...answer, $: updateAttrs(answer.$, 'audio', value) };
+                                                if (subtype === 'multipleChoiceSingle') {
+                                                    replacePage({
+                                                        ...page,
+                                                        multipleChoiceSingle: {
+                                                            ...page.multipleChoiceSingle!,
+                                                            choices: { ...page.multipleChoiceSingle!.choices, answer: nextAnswers },
+                                                        },
+                                                    });
+                                                    return;
+                                                }
                                                 replacePage({
                                                     ...page,
-                                                    multipleChoiceSingle: {
-                                                        ...page.multipleChoiceSingle!,
-                                                        choices: { ...page.multipleChoiceSingle!.choices, answer: nextAnswers },
+                                                    multipleChoiceMultiple: {
+                                                        ...page.multipleChoiceMultiple!,
+                                                        choices: { ...page.multipleChoiceMultiple!.choices, answer: nextAnswers },
                                                     },
                                                 });
-                                                return;
-                                            }
-
-                                            replacePage({
-                                                ...page,
-                                                multipleChoiceMultiple: {
-                                                    ...page.multipleChoiceMultiple!,
-                                                    choices: { ...page.multipleChoiceMultiple!.choices, answer: nextAnswers },
-                                                },
-                                            });
-                                        }}
-                                    />
+                                            }}
+                                        />
+                                    </div>
                                     <Toggle
                                         label='Correct answer'
                                         checked={answer.$?.correct === 'yes'}
@@ -471,64 +467,64 @@ export default function QuizPageEditor({ sectionIndex, pageIndex }: PageEditorPr
                                             });
                                         }}
                                     />
+
+                                    <RichTextEditor
+                                        label='Answer Feedback'
+                                        value={answer.feedback ?? ''}
+                                        onChange={(value) => {
+                                            const nextAnswers = [...answers];
+                                            nextAnswers[index] = { ...answer, feedback: value };
+                                            if (subtype === 'multipleChoiceSingle') {
+                                                replacePage({
+                                                    ...page,
+                                                    multipleChoiceSingle: {
+                                                        ...page.multipleChoiceSingle!,
+                                                        choices: { ...page.multipleChoiceSingle!.choices, answer: nextAnswers },
+                                                    },
+                                                });
+                                                return;
+                                            }
+
+                                            replacePage({
+                                                ...page,
+                                                multipleChoiceMultiple: {
+                                                    ...page.multipleChoiceMultiple!,
+                                                    choices: { ...page.multipleChoiceMultiple!.choices, answer: nextAnswers },
+                                                },
+                                            });
+                                        }}
+                                        minHeightClassName='min-h-24'
+                                    />
+
+                                    <button
+                                        type='button'
+                                        className='btn btn-sm btn-error btn-outline'
+                                        onClick={() => {
+                                            const nextAnswers = answers.filter((_, answerIndex) => answerIndex !== index);
+                                            if (subtype === 'multipleChoiceSingle') {
+                                                replacePage({
+                                                    ...page,
+                                                    multipleChoiceSingle: {
+                                                        ...page.multipleChoiceSingle!,
+                                                        choices: { ...page.multipleChoiceSingle!.choices, answer: nextAnswers },
+                                                    },
+                                                });
+                                                return;
+                                            }
+
+                                            replacePage({
+                                                ...page,
+                                                multipleChoiceMultiple: {
+                                                    ...page.multipleChoiceMultiple!,
+                                                    choices: { ...page.multipleChoiceMultiple!.choices, answer: nextAnswers },
+                                                },
+                                            });
+                                        }}>
+                                        Remove Answer
+                                    </button>
                                 </div>
-
-                                <RichTextEditor
-                                    label='Answer Feedback'
-                                    value={answer.feedback ?? ''}
-                                    onChange={(value) => {
-                                        const nextAnswers = [...answers];
-                                        nextAnswers[index] = { ...answer, feedback: value };
-                                        if (subtype === 'multipleChoiceSingle') {
-                                            replacePage({
-                                                ...page,
-                                                multipleChoiceSingle: {
-                                                    ...page.multipleChoiceSingle!,
-                                                    choices: { ...page.multipleChoiceSingle!.choices, answer: nextAnswers },
-                                                },
-                                            });
-                                            return;
-                                        }
-
-                                        replacePage({
-                                            ...page,
-                                            multipleChoiceMultiple: {
-                                                ...page.multipleChoiceMultiple!,
-                                                choices: { ...page.multipleChoiceMultiple!.choices, answer: nextAnswers },
-                                            },
-                                        });
-                                    }}
-                                    minHeightClassName='min-h-24'
-                                />
-
-                                <button
-                                    type='button'
-                                    className='btn btn-sm btn-error btn-outline'
-                                    onClick={() => {
-                                        const nextAnswers = answers.filter((_, answerIndex) => answerIndex !== index);
-                                        if (subtype === 'multipleChoiceSingle') {
-                                            replacePage({
-                                                ...page,
-                                                multipleChoiceSingle: {
-                                                    ...page.multipleChoiceSingle!,
-                                                    choices: { ...page.multipleChoiceSingle!.choices, answer: nextAnswers },
-                                                },
-                                            });
-                                            return;
-                                        }
-
-                                        replacePage({
-                                            ...page,
-                                            multipleChoiceMultiple: {
-                                                ...page.multipleChoiceMultiple!,
-                                                choices: { ...page.multipleChoiceMultiple!.choices, answer: nextAnswers },
-                                            },
-                                        });
-                                    }}>
-                                    Remove Answer
-                                </button>
-                            </div>
-                        ))}
+                            ))}
+                        </ArraySection>
                     </EditorPanel>
                 </>
             )}

@@ -76,7 +76,7 @@ export function UploadField({
     uploadDisabled = false,
 }: UploadFieldProps) {
     return (
-        <div className='flex flex-row gap-4'>
+        <div className='flex flex-row gap-2'>
             <label className='input floating-label flex-1'>
                 <span>{label}</span>
                 <input value={value} placeholder={placeholder || label} onChange={(event) => onChange(event.target.value)} />
@@ -96,7 +96,7 @@ interface ToggleProps {
 
 export function Toggle({ label, checked, onChange }: ToggleProps) {
     return (
-        <label className='label cursor-pointer justify-start gap-3 rounded-box border border-base-300 bg-base-100 px-4 py-3 flex-1'>
+        <label className='label cursor-pointer justify-start gap-3 rounded-box border border-base-300 bg-base-100 px-4 py-3 flex-1 w-full'>
             <input type='checkbox' className='checkbox checkbox-sm' checked={checked} onChange={(event) => onChange(event.target.checked)} />
             <span className='label-text'>{label}</span>
         </label>
@@ -112,6 +112,23 @@ export function EditorPanel({ children, className = 'space-y-4 p-4' }: EditorPan
     return (
         <section className={clsx('rounded-box border border-base-300 bg-base-200', className)}>
             {children}
+        </section>
+    );
+}
+
+interface ArraySectionProps {
+    children: ReactNode;
+    addLabel: string;
+    onAdd: () => void;
+}
+
+export function ArraySection({ children, addLabel, onAdd }: ArraySectionProps) {
+    return (
+        <section className='space-y-4'>
+            <button type='button' className='btn btn-sm btn-accent btn-soft btn-block' onClick={onAdd}>
+                {addLabel}
+            </button>
+            <div className='space-y-4 px-4'>{children}</div>
         </section>
     );
 }

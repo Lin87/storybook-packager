@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { EditorPanel, Field, SelectField, Toggle, UploadField } from '@/app/components/EditorFormControls';
+import { ArraySection, EditorPanel, Field, SelectField, Toggle, UploadField } from '@/app/components/EditorFormControls';
 import { showToast } from '@/app/utils/toast';
 import {
     createEmptyFrame,
@@ -38,17 +38,6 @@ function TextBlock({ label, value, onChange, rows = 3 }: { label: string; value:
             <span>{label}</span>
             <textarea className='textarea w-full' rows={rows} value={value} placeholder={label} onChange={(event) => onChange(event.target.value)} />
         </label>
-    );
-}
-
-function ArraySection({ children, addLabel, onAdd }: { children: React.ReactNode; addLabel: string; onAdd: () => void }) {
-    return (
-        <section className='space-y-4'>
-            <button type='button' className='btn btn-sm btn-accent btn-soft btn-block' onClick={onAdd}>
-                {addLabel}
-            </button>
-            <div className='space-y-4 px-4'>{children}</div>
-        </section>
     );
 }
 
