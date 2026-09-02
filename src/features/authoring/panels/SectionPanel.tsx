@@ -1,9 +1,9 @@
 'use client';
 
-import { useEditor } from '@/editor/state/EditorContext';
+import { useEditor } from '@/features/authoring/state/AuthoringProvider';
 import { ChevronDoubleRight } from 'react-bootstrap-icons';
 import type { RefObject } from 'react';
-import { SidebarHandle } from './Sidebar/Sidebar';
+import { SidebarHandle } from '../sidebar/Sidebar';
 
 interface SectionEditorProps {
     sidebarRef: RefObject<SidebarHandle | null>;

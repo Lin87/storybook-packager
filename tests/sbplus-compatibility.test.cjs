@@ -169,7 +169,7 @@ test('sample features survive parse, build, and parse', async () => {
 });
 
 test('page capabilities match intentional Storybook+ editing boundaries', () => {
-    const pageModel = fs.readFileSync(path.join(repoRoot, 'src', 'editor', 'pageModel.ts'), 'utf8');
+    const pageModel = fs.readFileSync(path.join(repoRoot, 'src', 'features', 'authoring', 'model', 'pageModel.ts'), 'utf8');
     const electronMain = fs.readFileSync(path.join(repoRoot, 'src', 'electron', 'main.ts'), 'utf8');
     const imageAudioBlock = pageModel.match(/'image-audio': \{[\s\S]*?\n    \}/)?.[0] ?? '';
     const htmlBlock = pageModel.match(/\n    html: \{[\s\S]*?\n    \}/)?.[0] ?? '';

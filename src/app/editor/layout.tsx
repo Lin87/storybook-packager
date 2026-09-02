@@ -1,4 +1,4 @@
-import EditorProvider from '@/editor/state/EditorContext';
+import EditorProvider from '@/features/authoring/state/AuthoringProvider';
 
 export default function EditorLayout({ children }: { children: React.ReactNode }) {
     return (

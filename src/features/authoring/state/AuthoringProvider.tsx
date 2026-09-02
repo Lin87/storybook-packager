@@ -1,8 +1,8 @@
 'use client';
 
 import { createContext, useContext, useReducer } from 'react';
-import { editorReducer, initialEditorState } from './editorReducer';
-import type { EditorState, EditorAction } from './editorTypes';
+import { editorReducer, initialEditorState } from './authoringReducer';
+import type { EditorState, EditorAction } from './authoringTypes';
 
 interface EditorContextValue {
     state: EditorState;

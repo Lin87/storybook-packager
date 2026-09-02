@@ -1,6 +1,6 @@
 import type { StorybookXml } from '@/types/sbplus';
 import type { Page } from '@/types/sbplus';
-import type { QuizSubtype, SupportedPageType } from '@/editor/pageModel';
+import type { QuizSubtype, SupportedPageType } from '@/features/authoring/model/pageModel';
 
 export interface EditorState {
     presentationPath: string;

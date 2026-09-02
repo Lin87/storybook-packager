@@ -1,7 +1,7 @@
-import { PAGE_TYPE_LABELS, type SupportedPageType } from '@/editor/pageModel';
+import { PAGE_TYPE_LABELS, type SupportedPageType } from '@/features/authoring/model/pageModel';
 import QuizPageEditor from './QuizPageEditor';
 import StandardPageEditor from './StandardPageEditor';
-import type { PageEditorRegistration } from './types';
+import type { PageEditorRegistration } from './pageEditorTypes';
 
 const REGISTRY: Record<SupportedPageType, PageEditorRegistration> = {
     image: { label: PAGE_TYPE_LABELS.image, Editor: StandardPageEditor },

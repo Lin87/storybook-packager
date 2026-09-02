@@ -12,9 +12,9 @@ import {
     PAGE_TYPE_LABELS,
     PAGE_TYPES,
     type SupportedPageType,
-} from '@/editor/pageModel';
+} from '@/features/authoring/model/pageModel';
 import type { Page, XmlAttributes } from '@/types/sbplus';
-import type { PageEditorProps } from './types';
+import type { PageEditorProps } from './pageEditorTypes';
 import RichTextEditor from './RichTextEditor';
 import { usePageEditorState } from './usePageEditorState';
 

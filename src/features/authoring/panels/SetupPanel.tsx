@@ -1,7 +1,7 @@
 'use client';
 
 import { showToast } from '@/components/toast';
-import { useEditor } from '@/editor/state/EditorContext';
+import { useEditor } from '@/features/authoring/state/AuthoringProvider';
 import type { Setup } from '@/types/sbplus';
 
 export default function SetupEditor() {

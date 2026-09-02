@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useEditor } from '@/editor/state/EditorContext';
+import { useEditor } from '@/features/authoring/state/AuthoringProvider';
 import type { Page } from '@/types/sbplus';
 
 function asArray<T>(value: T | T[] | undefined): T[] {

@@ -3,17 +3,17 @@
 import clsx from 'clsx';
 import { useEffect, useRef } from 'react';
 import type { RefObject } from 'react';
-import { useEditor } from '@/editor/state/EditorContext';
-import SetupEditor from './SetupEditor';
-import SectionEditor from './SectionEditor';
-import PageEditor from './PageEditor';
-import { SidebarHandle } from './Sidebar/Sidebar';
+import { useEditor } from '@/features/authoring/state/AuthoringProvider';
+import SetupPanel from './SetupPanel';
+import SectionPanel from './SectionPanel';
+import PagePanel from './PagePanel';
+import { SidebarHandle } from '../sidebar/Sidebar';
 
-interface MainEditorProps {
+interface PanelRouterProps {
     sidebarRef: RefObject<SidebarHandle | null>;
 }
 
-export default function MainEditor({ sidebarRef }: MainEditorProps) {
+export default function PanelRouter({ sidebarRef }: PanelRouterProps) {
     const { state } = useEditor();
     const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -27,9 +27,9 @@ export default function MainEditor({ sidebarRef }: MainEditorProps) {
 
     return (
         <div ref={scrollRef} className={clsx('flex-1 overflow-auto p-5', isSetupSelected && 'preview')}>
-            {isSetupSelected && <SetupEditor />}
-            {sectionSelected && <SectionEditor sidebarRef={sidebarRef} />}
-            {pageSelected && <PageEditor />}
+            {isSetupSelected && <SetupPanel />}
+            {sectionSelected && <SectionPanel sidebarRef={sidebarRef} />}
+            {pageSelected && <PagePanel />}
         </div>
     );
 }

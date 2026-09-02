@@ -9,7 +9,7 @@ import ConfirmDialog from '@/components/ConfirmDialog';
 import DeleteButton from '@/components/DeleteButton';
 import DragHandle from '@/components/DragHandle';
 import { showToast } from '@/components/toast';
-import { useEditor } from '@/editor/state/EditorContext';
+import { useEditor } from '@/features/authoring/state/AuthoringProvider';
 
 import { FileEarmarkZip, ChevronDown, ChevronRight, FolderCheck, Gear } from 'react-bootstrap-icons';
 
@@ -17,9 +17,9 @@ import { DndContext, closestCenter, DragOverlay, useDroppable } from '@dnd-kit/c
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-import { useSidebarDnD } from '@/editor/ui/Sidebar/useSidebarDnD';
-import type { SidebarDragItem } from '@/editor/ui/Sidebar/useSidebarDnD';
-import { getSectionTitle, getPageTitle } from '@/editor/ui/Sidebar/sidebarUtils';
+import { useSidebarDnD } from './useSidebarDnD';
+import type { SidebarDragItem } from './useSidebarDnD';
+import { getSectionTitle, getPageTitle } from './sidebarUtils';
 
 /* =========================================================
    Types

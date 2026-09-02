@@ -2,7 +2,7 @@ import { useRef, useState, useEffect } from 'react';
 import type { DragOverEvent, DragEndEvent, DragStartEvent, DragMoveEvent } from '@dnd-kit/core';
 import type { Dispatch, RefObject, SetStateAction } from 'react';
 import type { Section } from '@/types/sbplus';
-import type { EditorAction } from '@/editor/state/editorTypes';
+import type { EditorAction } from '@/features/authoring/state/authoringTypes';
 
 export type SectionDragItem = { type: 'section'; sectionIndex: number };
 export type PageDragItem = { type: 'page'; sectionIndex: number; pageIndex: number };

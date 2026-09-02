@@ -2,12 +2,12 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useEditor } from '@/editor/state/EditorContext';
-import MainEditor from '@/editor/ui/MainEditor';
-import Sidebar, { SidebarHandle } from '@/editor/ui/Sidebar/Sidebar';
+import { useEditor } from '@/features/authoring/state/AuthoringProvider';
+import PanelRouter from '@/features/authoring/panels/PanelRouter';
+import Sidebar, { SidebarHandle } from '@/features/authoring/sidebar/Sidebar';
 import { showToast } from '@/components/toast';
 
-export default function EditorScreen() {
+export default function AuthoringScreen() {
     const searchParams = useSearchParams();
     const { state, dispatch } = useEditor();
 
@@ -157,7 +157,7 @@ export default function EditorScreen() {
     return (
         <div className='flex h-full w-full overflow-hidden'>
             <Sidebar ref={sidebarRef} />
-            <MainEditor sidebarRef={sidebarRef} />
+            <PanelRouter sidebarRef={sidebarRef} />
         </div>
     );
 }

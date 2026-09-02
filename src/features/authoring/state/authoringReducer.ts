@@ -1,6 +1,6 @@
-import { convertPageType, convertQuizSubtype, createDefaultPage } from '@/editor/pageModel';
+import { convertPageType, convertQuizSubtype, createDefaultPage } from '@/features/authoring/model/pageModel';
 import type { Page, Section } from '@/types/sbplus';
-import type { EditorAction, EditorState } from './editorTypes';
+import type { EditorAction, EditorState } from './authoringTypes';
 
 function arrayMove<T>(arr: T[], from: number, to: number): T[] {
     const copy = [...arr];

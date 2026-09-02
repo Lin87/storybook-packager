@@ -1,15 +1,15 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useEditor } from '@/editor/state/EditorContext';
-import { getPageEditorRegistration } from './pageEditors/registry';
+import { useEditor } from '@/features/authoring/state/AuthoringProvider';
+import { getPageEditorRegistration } from '../page-editors/registry';
 
 function asArray<T>(v: T | T[] | undefined): T[] {
     if (!v) return [];
     return Array.isArray(v) ? v : [v];
 }
 
-export default function PageEditorHost() {
+export default function PagePanel() {
     const { state } = useEditor();
 
     const sIndex = state.selectedSectionIndex;
