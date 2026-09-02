@@ -11,6 +11,9 @@ import { fileURLToPath } from 'url';
 import { Builder, parseStringPromise } from 'xml2js';
 import type { StorybookXml } from '../types/sbplus';
 import { loadWelcomeWindowState, saveWelcomeWindowState, loadEditorWindowState, saveEditorWindowState } from './windowState.js';
+import { validatePresentation } from '../lib/presentationValidation.js';
+import type { ValidationItem, ValidationResult, ValidationSeverity } from '../lib/presentationValidation.js';
+import { exportPresentationPackageToDirectory } from '../lib/presentationPackage.js';
 
 // Required to get __dirname in ES module context
 const __filename = fileURLToPath(import.meta.url);
@@ -460,6 +463,57 @@ function registerIpcHandlers() {
         }
     });
 
+    ipcMain.handle('presentation:validate', async (_event, payload: SavePayload) => {
+        try {
+            return {
+                success: true,
+                result: validatePresentation(payload.xml, {
+                    fileSystem: createPresentationFileSystem(payload.presentationPath),
+                }),
+            };
+        } catch (err: unknown) {
+            const error = err instanceof Error ? err : new Error(String(err));
+            return { success: false, error: error.message };
+        }
+    });
+
+    ipcMain.handle('presentation:export-package', async (_event, payload: ExportPayload) => {
+        const targetPath = payload.targetPath ?? await selectExportDirectory();
+
+        if (!targetPath) {
+            return null;
+        }
+
+        try {
+            exportPresentationPackageToDirectory({
+                sourcePath: payload.presentationPath,
+                targetPath,
+                xmlContent: buildStorybookXml(payload.xml),
+            });
+            saveRecent(payload.presentationPath);
+            return {
+                success: true,
+                path: targetPath,
+                validation: validatePresentation(payload.xml, {
+                    fileSystem: createPresentationFileSystem(targetPath),
+                }),
+            };
+        } catch (err: unknown) {
+            const error = err instanceof Error ? err : new Error(String(err));
+            return { success: false, error: error.message };
+        }
+    });
+
+    ipcMain.handle('presentation:show-validation-results', async (event, payload: ValidationResultsPayload) => {
+        try {
+            openValidationResultsWindow(payload, BrowserWindow.fromWebContents(event.sender));
+            return { success: true };
+        } catch (err: unknown) {
+            const error = err instanceof Error ? err : new Error(String(err));
+            return { success: false, error: error.message };
+        }
+    });
+
     ipcMain.on('editor:set-dirty', (event, dirty: boolean) => {
         windowDirty.set(event.sender.id, Boolean(dirty));
         buildAppMenu(); // re-evaluate enabled/disabled state
@@ -561,6 +615,15 @@ function makeRange(min: number, max: number): number[] {
 type SavePayload = {
     presentationPath: string;
     xml: StorybookXml;
+};
+
+type ExportPayload = SavePayload & {
+    targetPath?: string;
+};
+
+type ValidationResultsPayload = {
+    result: ValidationResult;
+    presentationTitle?: string;
 };
 
 type ImportAssetPayload = {
@@ -747,6 +810,159 @@ function readAssetAsDataUrl(filePath: string): string {
                                     : 'application/octet-stream';
 
     return `data:${mimeType};base64,${content.toString('base64')}`;
+}
+
+function createPresentationFileSystem(presentationPath: string) {
+    return {
+        exists: (relativePath: string) => fs.existsSync(path.join(presentationPath, relativePath)),
+        listFiles: (relativeDirectory: string) => {
+            const directoryPath = path.join(presentationPath, relativeDirectory);
+            if (!fs.existsSync(directoryPath)) return [];
+
+            return fs
+                .readdirSync(directoryPath, { withFileTypes: true })
+                .filter((entry) => entry.isFile())
+                .map((entry) => entry.name);
+        },
+    };
+}
+
+function openValidationResultsWindow(payload: ValidationResultsPayload, parentWindow: BrowserWindow | null) {
+    const presentationTitle = payload.presentationTitle?.trim() || 'Untitled';
+    const windowTitle = `Validation Results - ${presentationTitle}`;
+    const validationWindow = new BrowserWindow({
+        width: 780,
+        height: 620,
+        minWidth: 520,
+        minHeight: 420,
+        title: windowTitle,
+        backgroundColor: '#111827',
+        autoHideMenuBar: true,
+        icon: resolveAsset('icons/icon.png'),
+        parent: parentWindow ?? undefined,
+        webPreferences: {
+            contextIsolation: true,
+            nodeIntegration: false,
+            sandbox: true,
+        },
+    });
+
+    validationWindow.removeMenu();
+    validationWindow.setMenuBarVisibility(false);
+    validationWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(buildValidationResultsHtml(payload.result, presentationTitle, windowTitle))}`);
+    validationWindow.webContents.on('page-title-updated', (event) => {
+        event.preventDefault();
+        validationWindow.setTitle(windowTitle);
+    });
+    validationWindow.webContents.once('did-finish-load', () => {
+        validationWindow.setTitle(windowTitle);
+    });
+}
+
+function buildValidationResultsHtml(result: ValidationResult, presentationTitle: string, windowTitle: string) {
+    return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${escapeHtml(windowTitle)}</title>
+  <style>
+    :root { color-scheme: dark; font-family: Arial, Helvetica, sans-serif; background: #111827; color: #e5e7eb; }
+    body { margin: 0; }
+    main { padding: 20px; }
+    header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+    h1 { font-size: 20px; line-height: 1.2; margin: 0; font-weight: 700; }
+    .title { color: #9ca3af; font-size: 13px; margin-top: 5px; overflow-wrap: anywhere; }
+    h2 { font-size: 13px; margin: 18px 0 8px; text-transform: uppercase; letter-spacing: 0; }
+    .summary { display: flex; gap: 8px; flex-wrap: wrap; }
+    .chip { border-radius: 4px; padding: 5px 8px; font-size: 12px; font-weight: 700; }
+    .error { color: #fecaca; background: #7f1d1d; }
+    .warning { color: #fde68a; background: #78350f; }
+    .info { color: #bfdbfe; background: #1e3a8a; }
+    .group { border-top: 1px solid #374151; padding-top: 4px; }
+    ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+    li { background: #1f2937; border: 1px solid #374151; border-radius: 6px; padding: 10px 12px; }
+    .message { font-size: 13px; line-height: 1.35; }
+    .meta { color: #9ca3af; font-size: 12px; margin-top: 5px; }
+    .empty { color: #9ca3af; font-size: 13px; margin-top: 24px; }
+    code { color: #c4b5fd; font-family: Consolas, Monaco, monospace; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>Validation Results</h1>
+        <div class="title">${escapeHtml(presentationTitle)}</div>
+      </div>
+      <div class="summary">
+        <span class="chip error">${result.summary.errors} Errors</span>
+        <span class="chip warning">${result.summary.warnings} Warnings</span>
+        <span class="chip info">${result.summary.info} Info</span>
+      </div>
+    </header>
+    ${buildValidationGroupHtml('Errors', 'error', result.items)}
+    ${buildValidationGroupHtml('Warnings', 'warning', result.items)}
+    ${buildValidationGroupHtml('Info', 'info', result.items)}
+  </main>
+</body>
+</html>`;
+}
+
+function buildValidationGroupHtml(title: string, severity: ValidationSeverity, items: ValidationItem[]) {
+    const matchingItems = items.filter((item) => item.severity === severity);
+    if (matchingItems.length === 0) return '';
+
+    return `<section class="group">
+  <h2 class="${severity}">${escapeHtml(title)}</h2>
+  <ul>
+    ${matchingItems.map(buildValidationItemHtml).join('\n    ')}
+  </ul>
+</section>`;
+}
+
+function buildValidationItemHtml(item: ValidationItem) {
+    const location = formatValidationLocation(item);
+    const target = item.target ? `<div class="meta">Target: <code>${escapeHtml(item.target)}</code></div>` : '';
+    const locationHtml = location ? `<div class="meta">${escapeHtml(location)}</div>` : '';
+
+    return `<li>
+  <div class="message">${escapeHtml(item.message)}</div>
+  ${locationHtml}
+  ${target}
+</li>`;
+}
+
+function formatValidationLocation(item: ValidationItem) {
+    const location = item.location;
+    if (!location) return '';
+
+    const section = location.sectionTitle ? location.sectionTitle : location.sectionIndex !== undefined ? `Section ${location.sectionIndex + 1}` : '';
+    const page = location.pageTitle ? location.pageTitle : location.pageIndex !== undefined ? `Page ${location.pageIndex + 1}` : '';
+
+    return [section, page].filter(Boolean).join(' / ');
+}
+
+function escapeHtml(value: string) {
+    return value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+async function selectExportDirectory() {
+    const result = await dialog.showOpenDialog({
+        title: 'Choose an export location',
+        properties: ['openDirectory', 'createDirectory'],
+    });
+
+    if (result.canceled || result.filePaths.length === 0) {
+        return null;
+    }
+
+    return result.filePaths[0];
 }
 
 function removeManagedFilesByBaseName(directory: string, baseName: string) {

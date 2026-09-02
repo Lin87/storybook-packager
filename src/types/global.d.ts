@@ -1,6 +1,7 @@
 export {};
 
 import type { StorybookXml } from "./sbplus";
+import type { ValidationResult } from "../lib/presentationValidation";
 
 type SaveReason = "menu" | "close";
 
@@ -44,6 +45,20 @@ interface AssetDataPayload {
     filePath: string;
 }
 
+interface ValidatePresentationPayload {
+    presentationPath: string;
+    xml: StorybookXml;
+}
+
+interface ExportPresentationPayload extends ValidatePresentationPayload {
+    targetPath?: string;
+}
+
+interface ShowValidationResultsPayload {
+    result: ValidationResult;
+    presentationTitle?: string;
+}
+
 declare global {
     interface Window {
         electronAPI: {
@@ -58,6 +73,9 @@ declare global {
             loadPresentationData: (path: string) => Promise<{ success: true; data: StorybookXml } | { success: false; error: string }>;
             importPresentationAsset: (payload: ImportAssetPayload) => Promise<ImportAssetSuccess | { success: false; error: string }>;
             getPresentationAssetDataUrl: (payload: AssetDataPayload) => Promise<{ success: true; dataUrl: string } | { success: false; error: string }>;
+            validatePresentation: (payload: ValidatePresentationPayload) => Promise<{ success: true; result: ValidationResult } | { success: false; error: string }>;
+            exportPresentationPackage: (payload: ExportPresentationPayload) => Promise<{ success: true; path: string; validation: ValidationResult } | { success: false; error: string } | null>;
+            showValidationResults: (payload: ShowValidationResultsPayload) => Promise<{ success: true } | { success: false; error: string }>;
             onMenuFileSave: (callback: (request: SaveRequest) => Promise<Exclude<SaveResult, null>> | Exclude<SaveResult, null>) => () => void;
             onMenuFileSaveAs: (callback: (request: SaveAsRequest) => Promise<SaveResult> | SaveResult) => () => void;
             setEditorDirty: (dirty: boolean) => void;

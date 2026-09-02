@@ -8,9 +8,10 @@ import type { DraggableAttributes, DraggableSyntheticListeners } from '@dnd-kit/
 import ConfirmDialog from '@/app/components/ConfirmDialog';
 import DeleteButton from '@/app/components/DeleteButton';
 import DragHandle from '@/app/components/DragHandle';
+import { showToast } from '@/app/utils/toast';
 import { useEditor } from '@/editor/state/EditorContext';
 
-import { ChevronDown, ChevronRight, Gear } from 'react-bootstrap-icons';
+import { FileEarmarkZip, ChevronDown, ChevronRight, FolderCheck, Gear } from 'react-bootstrap-icons';
 
 import { DndContext, closestCenter, DragOverlay, useDroppable } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -85,6 +86,8 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
     const [collapsedSections, setCollapsedSections] = useState<Record<number, boolean>>({});
     const [sectionToDelete, setSectionToDelete] = useState<{ index: number } | null>(null);
     const [pageToDelete, setPageToDelete] = useState<{ section: number; page: number } | null>(null);
+    const [validating, setValidating] = useState(false);
+    const [exporting, setExporting] = useState(false);
 
     const sections = xml ? (Array.isArray(xml.storybook.section) ? xml.storybook.section : [xml.storybook.section]) : [];
 
@@ -136,6 +139,79 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
             type: 'addPage',
             payload: { sectionIndex, pageType: 'image' },
         });
+    };
+
+    const getPresentationTitle = () => {
+        const title = state.xml?.storybook.setup?.title;
+        return (typeof title === 'string' ? title : '').trim() || state.presentationPath.split(/[/\\]/).pop() || 'Untitled';
+    };
+
+    const validatePresentation = async () => {
+        if (!state.xml || !state.presentationPath) return;
+
+        setValidating(true);
+        try {
+            const result = await window.electronAPI.validatePresentation({
+                presentationPath: state.presentationPath,
+                xml: state.xml,
+            });
+
+            if (result.success) {
+                const windowResult = await window.electronAPI.showValidationResults({
+                    result: result.result,
+                    presentationTitle: getPresentationTitle(),
+                });
+                if (!windowResult.success) {
+                    showToast(`Could not open validation window. ${windowResult.error}`, 'error');
+                }
+
+                const { errors, warnings } = result.result.summary;
+                if (errors > 0) {
+                    showToast(`Validation found ${errors} error${errors === 1 ? '' : 's'}.`, 'error');
+                } else if (warnings > 0) {
+                    showToast(`Validation found ${warnings} warning${warnings === 1 ? '' : 's'}.`, 'warning');
+                } else {
+                    showToast('Presentation validation passed.', 'success');
+                }
+            } else {
+                showToast(`Validation failed. ${result.error}`, 'error');
+            }
+        } finally {
+            setValidating(false);
+        }
+    };
+
+    const exportPresentation = async () => {
+        if (!state.xml || !state.presentationPath) return;
+
+        setExporting(true);
+        try {
+            const result = await window.electronAPI.exportPresentationPackage({
+                presentationPath: state.presentationPath,
+                xml: state.xml,
+            });
+
+            if (result === null) {
+                return;
+            }
+
+            if (result.success) {
+                const { errors, warnings } = result.validation.summary;
+                showToast(`Package exported to ${result.path}.`, 'success');
+
+                if (errors > 0 || warnings > 0) {
+                    await window.electronAPI.showValidationResults({
+                        result: result.validation,
+                        presentationTitle: getPresentationTitle(),
+                    });
+                }
+                return;
+            }
+
+            showToast(`Export failed. ${result.error}`, 'error');
+        } finally {
+            setExporting(false);
+        }
     };
 
     /* -----------------------------
@@ -250,9 +326,17 @@ const Sidebar = forwardRef<SidebarHandle>(function Sidebar(_, ref) {
     return (
         <div className='w-84 xl:w-94 bg-base-200 border-r border-base-300 h-full flex flex-col'>
             {/* Top (fixed) */}
-            <div className='flex bg-base-100 border-b border-base-300 p-2 justify-end preview'>
-                <button type='button' className={clsx('btn btn-xs btn-soft', isSetupSelected && 'btn-active')} onClick={selectSetup}>
-                    <Gear size={16} />
+            <div className='flex bg-base-100 border-b border-base-300 p-2 justify-end gap-2 preview'>
+                <button type='button' className='btn btn-xs btn-soft' onClick={validatePresentation} disabled={validating} title='Validate Presentation'>
+                    <FolderCheck size={14} />
+                    <span className='hidden xl:inline'>{validating ? 'Validating' : 'Validate'}</span>
+                </button>
+                <button type='button' className='btn btn-xs btn-soft' onClick={exportPresentation} disabled={exporting} title='Export Package'>
+                    <FileEarmarkZip size={14} />
+                    <span className='hidden xl:inline'>{exporting ? 'Exporting' : 'Export'}</span>
+                </button>
+                <button type='button' className={clsx('btn btn-xs btn-soft', isSetupSelected && 'btn-active')} onClick={selectSetup} title='Presentation Settings'>
+                    <Gear size={14} />
                 </button>
             </div>
 

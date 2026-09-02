@@ -23,6 +23,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     loadPresentationData: (path) => ipcRenderer.invoke('load-presentation-data', path),
     importPresentationAsset: (payload) => ipcRenderer.invoke('presentation:import-asset', payload),
     getPresentationAssetDataUrl: (payload) => ipcRenderer.invoke('presentation:get-asset-data-url', payload),
+    validatePresentation: (payload) => ipcRenderer.invoke('presentation:validate', payload),
+    exportPresentationPackage: (payload) => ipcRenderer.invoke('presentation:export-package', payload),
+    showValidationResults: (result) => ipcRenderer.invoke('presentation:show-validation-results', result),
     onMenuFileSave: (callback) => {
         const handler = async (_event, payload = {}) => {
             const requestId = payload.requestId;

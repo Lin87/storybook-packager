@@ -14,6 +14,7 @@
         "build:prod": "npm run build:next && npm run build:electron && npm run predist && electron-builder",
         "build:next": "next build",
         "test:compat": "node --test tests/sbplus-compatibility.test.cjs",
+        "test:validation": "tsc -p tsconfig.tests.json && node --test tests/presentation-validation.test.mjs",
         "build:electron": "tsc -p tsconfig.electron.json",
         "predist": "node -e \"require('fs').mkdirSync('node_modules/@img/sharp-darwin-arm64', { recursive: true });\""
     },
