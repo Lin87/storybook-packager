@@ -1,7 +1,7 @@
 "use client";
 
 import { ExclamationTriangleFill } from "react-bootstrap-icons";
-import { showToast } from "@/app/utils/toast";
+import { showToast } from "@/components/toast";
 
 function OpenExistingButton() {
     const handleOpenExisting = async () => {

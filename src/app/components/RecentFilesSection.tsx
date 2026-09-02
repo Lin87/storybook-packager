@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ExclamationTriangleFill } from "react-bootstrap-icons";
-import { showToast } from "@/app/utils/toast";
+import { showToast } from "@/components/toast";
 
 function RecentFilesSection() {
     const [recentFiles, setRecentFiles] = useState<string[]>([]);

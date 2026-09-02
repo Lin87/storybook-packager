@@ -1,6 +1,6 @@
 'use client';
 
-import { showToast } from '@/app/utils/toast';
+import { showToast } from '@/components/toast';
 import { useEditor } from '@/editor/state/EditorContext';
 import type { Setup } from '@/types/sbplus';
 

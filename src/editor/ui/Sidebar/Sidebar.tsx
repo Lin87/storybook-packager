@@ -5,10 +5,10 @@ import { forwardRef, useImperativeHandle, useRef, useState, useEffect } from 're
 import type { ReactNode, CSSProperties } from 'react';
 import type { DraggableAttributes, DraggableSyntheticListeners } from '@dnd-kit/core';
 
-import ConfirmDialog from '@/app/components/ConfirmDialog';
-import DeleteButton from '@/app/components/DeleteButton';
-import DragHandle from '@/app/components/DragHandle';
-import { showToast } from '@/app/utils/toast';
+import ConfirmDialog from '@/components/ConfirmDialog';
+import DeleteButton from '@/components/DeleteButton';
+import DragHandle from '@/components/DragHandle';
+import { showToast } from '@/components/toast';
 import { useEditor } from '@/editor/state/EditorContext';
 
 import { FileEarmarkZip, ChevronDown, ChevronRight, FolderCheck, Gear } from 'react-bootstrap-icons';

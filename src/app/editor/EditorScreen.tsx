@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { useEditor } from '@/editor/state/EditorContext';
 import MainEditor from '@/editor/ui/MainEditor';
 import Sidebar, { SidebarHandle } from '@/editor/ui/Sidebar/Sidebar';
-import { showToast } from '../utils/toast';
+import { showToast } from '@/components/toast';
 
 export default function EditorScreen() {
     const searchParams = useSearchParams();

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { DM_Mono, Poppins } from "next/font/google";
-import SystemThemeSync from "./SystemThemeSync";
+import SystemThemeSync from "@/components/SystemThemeSync";
 import "./globals.css";
 import "./tiptap-globals.scss";
 

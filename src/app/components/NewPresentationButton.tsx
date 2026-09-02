@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ExclamationTriangleFill } from "react-bootstrap-icons";
-import { showToast } from "@/app/utils/toast";
+import { showToast } from "@/components/toast";
 
 function NewPresentationButton() {
     const [loading, setLoading] = useState(false);

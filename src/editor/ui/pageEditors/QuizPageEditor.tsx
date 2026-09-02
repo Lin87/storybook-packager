@@ -1,7 +1,7 @@
 'use client';
 
-import { ArraySection, EditorPanel, Field, SelectField, Toggle, UploadField } from '@/app/components/EditorFormControls';
-import { showToast } from '@/app/utils/toast';
+import { ArraySection, EditorPanel, Field, SelectField, Toggle, UploadField } from '@/components/FormControls';
+import { showToast } from '@/components/toast';
 import {
     createEmptyAnswer,
     getQuizSubtype,
