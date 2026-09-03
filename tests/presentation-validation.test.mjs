@@ -3,9 +3,10 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import zlib from 'node:zlib';
 import { Builder, parseStringPromise } from 'xml2js';
 
-import { exportPresentationPackageToDirectory } from '../.test-build/lib/presentationPackage.js';
+import { exportPresentationPackageToDirectory, exportPresentationPackageToZip } from '../.test-build/lib/presentationPackage.js';
 import { validatePresentation } from '../.test-build/lib/presentationValidation.js';
 
 const repoRoot = path.resolve(import.meta.dirname, '..');
@@ -102,6 +103,73 @@ function buildStorybookXml(xml) {
     }).buildObject(normalizeStorybookXml(xml));
 }
 
+function listZipEntries(zipPath) {
+    const data = fs.readFileSync(zipPath);
+    return readZipEntries(data).map((entry) => entry.name);
+}
+
+function readZipEntryText(zipPath, entryName) {
+    const data = fs.readFileSync(zipPath);
+    const entry = readZipEntries(data).find((item) => item.name === entryName);
+
+    assert.ok(entry, `Expected zip entry ${entryName}`);
+
+    const localHeaderOffset = entry.localHeaderOffset;
+    assert.equal(data.readUInt32LE(localHeaderOffset), 0x04034b50, 'Expected local file header');
+
+    const fileNameLength = data.readUInt16LE(localHeaderOffset + 26);
+    const extraFieldLength = data.readUInt16LE(localHeaderOffset + 28);
+    const contentStart = localHeaderOffset + 30 + fileNameLength + extraFieldLength;
+    const compressed = data.subarray(contentStart, contentStart + entry.compressedSize);
+
+    if (entry.compressionMethod === 0) {
+        return compressed.toString('utf8');
+    }
+
+    assert.equal(entry.compressionMethod, 8, 'Expected stored or deflated zip entry');
+    return zlib.inflateRawSync(compressed).toString('utf8');
+}
+
+function readZipEntries(data) {
+    let endOfCentralDirectory = -1;
+
+    for (let i = data.length - 22; i >= 0; i--) {
+        if (data.readUInt32LE(i) === 0x06054b50) {
+            endOfCentralDirectory = i;
+            break;
+        }
+    }
+
+    assert.notEqual(endOfCentralDirectory, -1, 'Expected zip end of central directory record');
+
+    const entryCount = data.readUInt16LE(endOfCentralDirectory + 10);
+    const centralDirectoryOffset = data.readUInt32LE(endOfCentralDirectory + 16);
+    const entries = [];
+    let offset = centralDirectoryOffset;
+
+    for (let i = 0; i < entryCount; i++) {
+        assert.equal(data.readUInt32LE(offset), 0x02014b50, 'Expected central directory file header');
+
+        const compressionMethod = data.readUInt16LE(offset + 10);
+        const compressedSize = data.readUInt32LE(offset + 20);
+        const fileNameLength = data.readUInt16LE(offset + 28);
+        const extraFieldLength = data.readUInt16LE(offset + 30);
+        const fileCommentLength = data.readUInt16LE(offset + 32);
+        const localHeaderOffset = data.readUInt32LE(offset + 42);
+        const nameStart = offset + 46;
+
+        entries.push({
+            name: data.subarray(nameStart, nameStart + fileNameLength).toString('utf8'),
+            compressionMethod,
+            compressedSize,
+            localHeaderOffset,
+        });
+        offset = nameStart + fileNameLength + extraFieldLength + fileCommentLength;
+    }
+
+    return entries;
+}
+
 test('sample presentation validates against real assets and ignores external URLs', async () => {
     const xml = await readSample();
     const result = validatePresentation(xml, { fileSystem: createFileSystem(samplePresentationPath) });
@@ -183,4 +251,34 @@ test('exported package contains Storybook+ asset structure and current XML', asy
     assert.ok(fs.existsSync(path.join(targetPath, 'assets', 'html')));
     assert.ok(fs.existsSync(path.join(targetPath, 'assets', 'pages')));
     assert.equal(fs.readFileSync(path.join(targetPath, 'assets', 'sbplus.xml'), 'utf8'), xmlContent);
+});
+
+test('zip export contains current XML and omits empty asset folders', async () => {
+    const sourcePath = fs.mkdtempSync(path.join(os.tmpdir(), 'storybook-source-'));
+    const targetPath = path.join(os.tmpdir(), `storybook-package-${Date.now()}.zip`);
+    const xmlContent = '<storybook><setup><title>Zip Test</title></setup></storybook>';
+
+    fs.mkdirSync(path.join(sourcePath, 'assets', 'audio'), { recursive: true });
+    fs.mkdirSync(path.join(sourcePath, 'assets', 'images'), { recursive: true });
+    fs.mkdirSync(path.join(sourcePath, 'assets', 'pages'), { recursive: true });
+    fs.writeFileSync(path.join(sourcePath, 'assets', 'pages', 'slide01.jpg'), 'image data');
+    fs.writeFileSync(path.join(sourcePath, 'assets', 'sbplus.xml'), '<storybook></storybook>');
+
+    await exportPresentationPackageToZip({
+        sourcePath,
+        targetPath,
+        xmlContent,
+    });
+
+    const entries = listZipEntries(targetPath);
+
+    assert.ok(fs.existsSync(targetPath));
+    assert.ok(fs.statSync(targetPath).size > 0);
+    assert.ok(entries.includes('assets/sbplus.xml'));
+    assert.ok(entries.includes('assets/pages/slide01.jpg'));
+    assert.ok(entries.some((entry) => entry.startsWith('assets/pages/')));
+    assert.equal(entries.some((entry) => entry.startsWith('assets/audio/')), false);
+    assert.equal(entries.some((entry) => entry.startsWith('assets/images/')), false);
+    assert.equal(entries.includes('assets/'), false);
+    assert.equal(readZipEntryText(targetPath, 'assets/sbplus.xml'), xmlContent);
 });

@@ -42,7 +42,7 @@ No framework: both suites use the built-in `node:test` runner.
 
 ## Stack
 
-Electron 44 · electron-builder 26 · Next 16 · React 19 · TypeScript 6 (pinned exact) · Tailwind v4 + daisyUI 5 · `xml2js` · `@dnd-kit` (core/sortable/utilities) · TipTap 3 (+ Radix and Base UI primitives) · `react-bootstrap-icons` · Express 5 + `get-port` · `sass` (for vendored TipTap tokens only).
+Electron 44 · electron-builder 26 · Next 16 · React 19 · TypeScript 6 (pinned exact) · Tailwind v4 + daisyUI 5 · `xml2js` · `archiver` · `@dnd-kit` (core/sortable/utilities) · TipTap 3 (+ Radix and Base UI primitives) · `react-bootstrap-icons` · Express 5 + `get-port` · `sass` (for vendored TipTap tokens only).
 
 Three tsconfigs, all `strict`:
 
@@ -125,12 +125,13 @@ The contract lives in three places and all three must be edited together:
 - **The renderer cannot read `file://`** — it is served from the static-server origin. Asset previews go through the `presentation:get-asset-data-url` IPC call and come back as base64 data URLs.
 - **`sharp` and `electron-default-menu` are declared dependencies but unused in `src/`.** `sharp` exists only for the `predist` electron-builder workaround; the menu is hand-built in `buildAppMenu()`. Don't "fix" this by wiring them up.
 - **ESLint deliberately disables** `react-hooks/immutability`, `react-hooks/refs`, and `react-hooks/set-state-in-effect` (the `react-hooks-compiler-advisory-compat` block in [eslint.config.mjs](eslint.config.mjs)). Leave them off.
-- **Export writes a directory, not an archive**, despite the app's name and the zip icon on the button.
+- **Presentations are edited as directories on disk.** Export is optional and writes a zip archive for sharing/delivery. The export IPC stages the package in a temp directory, validates that staged directory, then zips only files, so empty asset folders are omitted.
 - Help → About sends `menu:help-about` to the focused window, which opens [src/components/AboutModal.tsx](src/components/AboutModal.tsx). The welcome window has no menu bar, so it triggers the same modal from an About button. Check for Updates now lives inside that modal, and `app:check-for-updates` always returns `{ status: 'unsupported' }` — there is still no auto-update.
 - **The legal documents are rendered from generated HTML.** [env-scripts/build-legal-docs.mjs](env-scripts/build-legal-docs.mjs) converts `docs/legal/*.md` and the root `LICENSE` into gitignored fragments under `public/legal/`; `docs/` itself is not bundled. The app has **no** `shell.openExternal` and no `setWindowOpenHandler`, so the script unwraps every link that is not an in-app `#legal-*` tab anchor, and [src/components/LegalDocumentViewer.tsx](src/components/LegalDocumentViewer.tsx) swallows the rest — do not introduce an anchor that would open a bare Electron window. After editing a legal document, re-run `npm run build:legal` and bump `LEGAL_DOC_VERSION` in [src/lib/legal.ts](src/lib/legal.ts) if the change is material, which re-shows the first-run screen for users who already accepted.
 - **Dev launches always start at the first-run agreement screen.** [env-scripts/start-electron-dev.cjs](env-scripts/start-electron-dev.cjs) deletes `legal-acceptance.json` from the userData folder before launching, so `npm run dev` (and `npm run start:electron:dev`) never skips that flow. Packaged and `start:electron:prod` runs keep the record. Dev and packaged builds share one userData folder, so this also clears an installed build's acceptance.
 - **A `<dialog>` nested inside another `<dialog>` shares its `close` event** — it bubbles, so the parent's `onClose` fires too. [src/components/LegalModal.tsx](src/components/LegalModal.tsx) is therefore a sibling of the About dialog, not a child.
 - User-facing behavior changes may require docs/legal updates. When adding or changing accounts, telemetry, analytics, crash reporting, update checks, network requests, third-party integrations, licensing/distribution, data storage, exports, security reporting, accessibility claims, or support/contact flows, review and update [docs/legal/TERMS.md](docs/legal/TERMS.md), [docs/legal/PRIVACY.md](docs/legal/PRIVACY.md), and [README.md](README.md) as needed.
+- Update [AGENTS.md](AGENTS.md) after changes only when the latest implementation changes the architecture, commands, tests, stack, conventions, domain model, gotchas, or other guidance future coding agents rely on.
 - No CI (`.github/` does not exist), no husky, no lint-staged, no Prettier, no `.editorconfig` — formatting is manual, so match the surrounding file.
 
 ## Conventions

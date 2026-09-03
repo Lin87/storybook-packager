@@ -7,6 +7,7 @@ import http from 'http';
 import getPort from 'get-port';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 import { fileURLToPath } from 'url';
 import { Builder, parseStringPromise } from 'xml2js';
 import type { StorybookXml } from '../types/sbplus';
@@ -17,7 +18,7 @@ import { LEGAL_DOC_VERSION } from '../lib/legal.js';
 import type { LegalState } from '../lib/legal.js';
 import { validatePresentation } from '../lib/presentationValidation.js';
 import type { ValidationItem, ValidationResult, ValidationSeverity } from '../lib/presentationValidation.js';
-import { exportPresentationPackageToDirectory } from '../lib/presentationPackage.js';
+import { exportPresentationPackageToDirectory, zipPresentationPackageDirectory } from '../lib/presentationPackage.js';
 
 // Required to get __dirname in ES module context
 const __filename = fileURLToPath(import.meta.url);
@@ -542,29 +543,37 @@ function registerIpcHandlers() {
     });
 
     ipcMain.handle('presentation:export-package', async (_event, payload: ExportPayload) => {
-        const targetPath = payload.targetPath ?? await selectExportDirectory();
+        const selectedPath = payload.targetPath ?? await selectExportZipPath(payload.presentationPath);
 
-        if (!targetPath) {
+        if (!selectedPath) {
             return null;
         }
+
+        const targetPath = ensureZipExtension(selectedPath);
+        const stagingPath = fs.mkdtempSync(path.join(os.tmpdir(), 'storybook-package-'));
 
         try {
             exportPresentationPackageToDirectory({
                 sourcePath: payload.presentationPath,
-                targetPath,
+                targetPath: stagingPath,
                 xmlContent: buildStorybookXml(payload.xml),
             });
+            const validation = validatePresentation(payload.xml, {
+                fileSystem: createPresentationFileSystem(stagingPath),
+            });
+
+            await zipPresentationPackageDirectory(stagingPath, targetPath);
             saveRecent(payload.presentationPath);
             return {
                 success: true,
                 path: targetPath,
-                validation: validatePresentation(payload.xml, {
-                    fileSystem: createPresentationFileSystem(targetPath),
-                }),
+                validation,
             };
         } catch (err: unknown) {
             const error = err instanceof Error ? err : new Error(String(err));
             return { success: false, error: error.message };
+        } finally {
+            fs.rmSync(stagingPath, { recursive: true, force: true });
         }
     });
 
@@ -1066,17 +1075,22 @@ function escapeHtml(value: string) {
         .replace(/'/g, '&#39;');
 }
 
-async function selectExportDirectory() {
-    const result = await dialog.showOpenDialog({
-        title: 'Choose an export location',
-        properties: ['openDirectory', 'createDirectory'],
+async function selectExportZipPath(presentationPath: string) {
+    const result = await dialog.showSaveDialog({
+        title: 'Export Zip Package',
+        defaultPath: `${path.basename(presentationPath)}.zip`,
+        filters: [{ name: 'Zip archives', extensions: ['zip'] }],
     });
 
-    if (result.canceled || result.filePaths.length === 0) {
+    if (result.canceled || !result.filePath) {
         return null;
     }
 
-    return result.filePaths[0];
+    return result.filePath;
+}
+
+function ensureZipExtension(filePath: string) {
+    return path.extname(filePath).toLowerCase() === '.zip' ? filePath : `${filePath}.zip`;
 }
 
 function removeManagedFilesByBaseName(directory: string, baseName: string) {

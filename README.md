@@ -8,7 +8,7 @@ Built with Electron and a statically exported Next.js renderer. Sponsored by Exc
 
 ## What a presentation is
 
-A presentation is a **folder**, not a single file. The app creates, reads, validates, and exports this structure:
+A presentation is a **folder**, not a single file. The app creates, reads, validates, and saves this structure directly on your computer:
 
 ```text
 <presentation>/
@@ -22,7 +22,7 @@ A presentation is a **folder**, not a single file. The app creates, reads, valid
     └── html/                 # embedded HTML pages
 ```
 
-Everything the app does is expressed in that folder — there is no separate project file or database.
+Everything the app does is expressed in that folder — there is no separate project file or database. Export is optional and creates a zip archive for sharing or delivery.
 
 ## Features
 
@@ -68,7 +68,7 @@ A one-click check that reports missing assets, empty required sources, missing H
 
 ### Export
 
-Exports a clean, self-contained copy of the presentation to a folder you choose: the full asset tree plus a freshly serialized `sbplus.xml`. Validation runs first, and the results window opens automatically if there are errors or warnings.
+Exports an optional zip archive for sharing or delivery: the presentation assets plus a freshly serialized `sbplus.xml`. Validation runs first, and the results window opens automatically if there are errors or warnings.
 
 ### Saving
 
@@ -128,13 +128,11 @@ Version 0.1.0, in active development. Known gaps:
 
 - Help → About shows the app version and an update status, but the update check itself is a placeholder.
 - There is no auto-update mechanism.
-- Export produces a packaged folder, not an archive.
 
 ## Legal
 
 - [Terms and Conditions](docs/legal/TERMS.md)
 - [Privacy Policy](docs/legal/PRIVACY.md)
-- [GNU General Public License v3.0](LICENSE)
 
 ## License
 
