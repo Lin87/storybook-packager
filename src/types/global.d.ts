@@ -67,6 +67,8 @@ declare global {
             getPlatform: () => Promise<NodeJS.Platform>;
             getAppVersion: () => Promise<string>;
             checkForUpdates: () => Promise<UpdateCheckResult>;
+            openReleasePage: () => Promise<void>;
+            snoozeUpdate: (version: string) => void;
             getLegalState: () => Promise<LegalState>;
             acceptLegal: () => Promise<void>;
             declineLegal: () => void;

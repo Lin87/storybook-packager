@@ -3,6 +3,10 @@
     "description": "Storybook Packager desktop application",
     "author": "Ethan Lin <elin@excelsior.edu>",
     "version": "0.1.0",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/Lin87/storybook-packager.git"
+    },
     "main": "dist-electron/electron/main.js",
     "private": true,
     "type": "module",
@@ -18,7 +22,7 @@
         "build:next": "next build",
         "test:compat": "node --test tests/sbplus-compatibility.test.cjs",
         "test:validation": "tsc -p tsconfig.tests.json && node --test tests/presentation-validation.test.mjs",
-        "build:electron": "tsc -p tsconfig.electron.json",
+        "build:electron": "tsc -p tsconfig.electron.json && node -e \"require('fs').copyFileSync('src/electron/preload.cjs', 'dist-electron/electron/preload.cjs');\"",
         "predist": "node -e \"require('fs').mkdirSync('node_modules/@img/sharp-darwin-arm64', { recursive: true });\""
     },
     "build": {

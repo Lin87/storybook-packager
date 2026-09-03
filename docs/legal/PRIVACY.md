@@ -44,11 +44,15 @@ Storybook Packager does not include Publisher-operated behavioral analytics, adv
 
 The Application also does not automatically send crash reports to Publisher.
 
-The Application stores a small amount of local application state on your own computer, including window positions, a list of recently opened projects, and a record of your acceptance of the Terms and Privacy Policy (the accepted document version, the date and time of acceptance, and the application version in use). This information stays in the Application's data folder on your computer and is not transmitted to Publisher.
+The Application stores a small amount of local application state on your own computer, including window positions, a list of recently opened projects, the date of the last update check together with any update version you chose to be reminded about later, and a record of your acceptance of the Terms and Privacy Policy (the accepted document version, the date and time of acceptance, and the application version in use). This information stays in the Application's data folder on your computer and is not transmitted to Publisher.
 
 ## 4. Software Updates and Network Requests
 
-The current Application does not include an automatic software-update mechanism. The in-app update check currently reports that update checks are not available.
+The Application does not download or install updates automatically. It does check whether a newer version has been published, and tells you when one is available; downloading and installing an update is always an action you take yourself, outside the Application.
+
+To perform that check, the Application requests the latest published release information from GitHub's public API (`api.github.com`). This check runs at most once per day shortly after the Application starts, and whenever you request it from the Help menu or the About window. The request contains no personal information, no information about your projects or their contents, and no student or institutional data; it is an anonymous, unauthenticated request for a published version number. If a newer version is available and you choose to download it, your default web browser opens the release page on `github.com`.
+
+If you choose "Remind Me Later", the Application records the version number you deferred and the date until which it should stay hidden. That record is stored locally on your computer and is not transmitted.
 
 The Application may still make network requests in limited circumstances, including when you use the development build, open or preview content that references a remote resource, configure third-party content, or operate Exported Content that references third-party services. For example, previewing or distributing content that embeds externally hosted video or media may cause requests to the applicable third-party service.
 

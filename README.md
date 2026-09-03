@@ -102,6 +102,22 @@ npm run build:prod
 
 This builds the Next.js static export, compiles the Electron main process, and runs `electron-builder` — producing an NSIS installer on Windows, a DMG on macOS, and an AppImage on Linux, in `dist/`.
 
+## Releasing
+
+The in-app update check reads the latest published release of [`Lin87/storybook-packager`](https://github.com/Lin87/storybook-packager/releases) from GitHub's public API. To publish a version:
+
+1. Bump `version` in `package.json` — everything else (the About window, the update comparison, the request User-Agent) reads that one field.
+2. `npm run build:prod` on each platform you are shipping.
+3. Tag and publish, attaching the installers:
+
+    ```bash
+    gh release create v0.1.1 dist/*.exe dist/*.dmg dist/*.AppImage --title "v0.1.1" --notes "..."
+    ```
+
+The tag must be `v<version>`, matching `package.json` exactly. `/releases/latest` skips drafts and prereleases, so marking a release as a prerelease is the way to stage a build without notifying anyone. The repository must stay public — the app makes an unauthenticated request and ships no token.
+
+Builds are unsigned on all three platforms: macOS users need to right-click → Open the first time, and Windows users will see a SmartScreen warning. Worth saying so in the release notes.
+
 ## Project layout
 
 | Path | Purpose |
@@ -126,8 +142,7 @@ Acceptance is recorded per document version in the app's data folder, so materia
 
 Version 0.1.0, in active development. Known gaps:
 
-- Help → About shows the app version and an update status, but the update check itself is a placeholder.
-- There is no auto-update mechanism.
+- Updates are notify-only. Help → Check for Updates and the About window report whether a newer release exists and offer to open the download page; there is no automatic download or install, because the app is not code-signed on any platform.
 
 ## Legal
 

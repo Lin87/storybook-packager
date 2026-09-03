@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, Menu } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, Menu, shell } from 'electron';
 
 app.setName('storybook-packager');
 
@@ -14,6 +14,8 @@ import type { StorybookXml } from '../types/sbplus';
 import type { UpdateCheckResult } from '../types/updates';
 import { loadWelcomeWindowState, saveWelcomeWindowState, loadEditorWindowState, saveEditorWindowState } from './windowState.js';
 import { hasAcceptedCurrentLegal, saveLegalAcceptance } from './legalAcceptance.js';
+import { checkForUpdates, getLatestReleaseUrl } from './updateCheck.js';
+import { isSnoozed, recordCheck, shouldAutoCheck, snoozeVersion } from './updateState.js';
 import { LEGAL_DOC_VERSION } from '../lib/legal.js';
 import type { LegalState } from '../lib/legal.js';
 import { validatePresentation } from '../lib/presentationValidation.js';
@@ -65,6 +67,105 @@ function getPackageVersion(): string {
     }
 
     return 'unknown';
+}
+
+/** Guards the Help menu item so a slow check cannot be started twice. */
+let updateCheckInFlight = false;
+
+/**
+ * Shows a message box parented to whichever window is available. The launch-time
+ * check can fire before any window exists, so the parentless overload matters.
+ */
+function showUpdateMessageBox(options: Electron.MessageBoxOptions) {
+    const focused = BrowserWindow.getFocusedWindow();
+    const parent = focused && !focused.isDestroyed() ? focused : welcomeWindow && !welcomeWindow.isDestroyed() ? welcomeWindow : null;
+
+    return parent ? dialog.showMessageBox(parent, options) : dialog.showMessageBox(options);
+}
+
+/**
+ * Presents the outcome of an update check.
+ *
+ * The app is unsigned on every platform, so there is no auto-update: the user
+ * is offered the release page and downloads the installer themselves. When
+ * `silent`, only an available update is worth interrupting for.
+ */
+async function showUpdateDialog(result: UpdateCheckResult, { silent = false }: { silent?: boolean } = {}) {
+    if (result.status === 'update-available') {
+        const { response } = await showUpdateMessageBox({
+            type: 'info',
+            title: 'Update Available',
+            message: `Storybook Packager ${result.version} is available.`,
+            detail: `You are running ${getPackageVersion()}. Downloading opens the release page in your browser; run the installer to update.`,
+            buttons: ['Download Now', 'Remind Me Later'],
+            defaultId: 0,
+            cancelId: 1,
+            noLink: true,
+        });
+
+        if (response === 0) {
+            void shell.openExternal(result.url ?? getLatestReleaseUrl());
+        } else {
+            snoozeVersion(result.version);
+        }
+
+        return;
+    }
+
+    if (silent) return;
+
+    if (result.status === 'up-to-date') {
+        await showUpdateMessageBox({
+            type: 'info',
+            title: 'No Updates',
+            message: 'You are up to date.',
+            detail: `Storybook Packager ${result.version} is the latest version.`,
+            buttons: ['OK'],
+            noLink: true,
+        });
+        return;
+    }
+
+    await showUpdateMessageBox({
+        type: 'warning',
+        title: 'Update Check Failed',
+        message: 'Could not check for updates.',
+        detail: result.status === 'error' ? result.error : 'Update checks are not available.',
+        buttons: ['OK'],
+        noLink: true,
+    });
+}
+
+/** Runs a check and reports it, keeping the menu item disabled meanwhile. */
+async function runUpdateCheck({ silent = false }: { silent?: boolean } = {}) {
+    if (updateCheckInFlight) return;
+
+    updateCheckInFlight = true;
+    buildAppMenu();
+
+    try {
+        const result = await checkForUpdates(getPackageVersion());
+        recordCheck();
+
+        // A snoozed version is only hidden from the unprompted check; asking
+        // explicitly should always get an answer.
+        if (silent && result.status === 'update-available' && isSnoozed(result.version)) return;
+
+        await showUpdateDialog(result, { silent });
+    } finally {
+        updateCheckInFlight = false;
+        buildAppMenu();
+    }
+}
+
+function checkForUpdatesMenuItem(): Electron.MenuItemConstructorOptions {
+    return {
+        label: 'Check for Updates...',
+        enabled: !updateCheckInFlight,
+        click: () => {
+            void runUpdateCheck();
+        },
+    };
 }
 
 function aboutMenuItem(): Electron.MenuItemConstructorOptions {
@@ -132,7 +233,7 @@ function buildAppMenu() {
 
         {
             label: 'Help',
-            submenu: [aboutMenuItem()],
+            submenu: [checkForUpdatesMenuItem(), { type: 'separator' }, aboutMenuItem()],
         },
     ];
 
@@ -142,6 +243,7 @@ function buildAppMenu() {
             label: app.name,
             submenu: [
                 aboutMenuItem(),
+                checkForUpdatesMenuItem(),
                 { type: 'separator' },
                 { role: 'services' },
                 { type: 'separator' },
@@ -209,10 +311,20 @@ function registerIpcHandlers() {
         return getPackageVersion();
     });
 
-    // Placeholder until the auto-update phase: the renderer already renders every
-    // UpdateCheckResult branch, so only this handler needs to change later.
-    ipcMain.handle('app:check-for-updates', (): UpdateCheckResult => {
-        return { status: 'unsupported' };
+    ipcMain.handle('app:check-for-updates', async (): Promise<UpdateCheckResult> => {
+        const result = await checkForUpdates(getPackageVersion());
+        recordCheck();
+        return result;
+    });
+
+    // Takes no URL: the release page comes from the last check, so nothing the
+    // renderer supplies is ever handed to the shell.
+    ipcMain.handle('app:open-release-page', () => {
+        return shell.openExternal(getLatestReleaseUrl());
+    });
+
+    ipcMain.on('app:snooze-update', (_event, version: string) => {
+        if (typeof version === 'string' && version) snoozeVersion(version);
     });
 
     ipcMain.handle('legal:get-state', (): LegalState => {
@@ -693,7 +805,21 @@ app.whenReady().then(async () => {
         staticPort = await startStaticServer(); // Only start Express server in prod mode
     }
     createStartupWindow();
+    scheduleBackgroundUpdateCheck();
 });
+
+/**
+ * Checks once a day, a few seconds after launch so it never competes with the
+ * window opening. Stays completely silent unless a new version is waiting.
+ */
+function scheduleBackgroundUpdateCheck() {
+    // Never interrupt the agreement screen with a dialog.
+    if (!hasAcceptedCurrentLegal() || !shouldAutoCheck()) return;
+
+    setTimeout(() => {
+        void runUpdateCheck({ silent: true });
+    }, 5000);
+}
 
 app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

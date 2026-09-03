@@ -15,6 +15,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getPlatform: () => ipcRenderer.invoke("app:get-platform"),
     getAppVersion: () => ipcRenderer.invoke("app:get-version"),
     checkForUpdates: () => ipcRenderer.invoke("app:check-for-updates"),
+    openReleasePage: () => ipcRenderer.invoke("app:open-release-page"),
+    snoozeUpdate: (version) => ipcRenderer.send("app:snooze-update", version),
     getLegalState: () => ipcRenderer.invoke("legal:get-state"),
     acceptLegal: () => ipcRenderer.invoke("legal:accept"),
     declineLegal: () => ipcRenderer.send("legal:decline"),

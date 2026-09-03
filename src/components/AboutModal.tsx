@@ -15,7 +15,14 @@ interface AboutModalProps {
 
 const currentYear = new Date().getFullYear();
 
-function UpdateStatus({ result, checking }: { result: UpdateCheckResult | null; checking: boolean }) {
+interface UpdateStatusProps {
+    result: UpdateCheckResult | null;
+    checking: boolean;
+    onDownload: () => void;
+    onRemindLater: (version: string) => void;
+}
+
+function UpdateStatus({ result, checking, onDownload, onRemindLater }: UpdateStatusProps) {
     if (checking) {
         return (
             <p className='flex items-center justify-center gap-2 text-sm opacity-70'>
@@ -38,19 +45,23 @@ function UpdateStatus({ result, checking }: { result: UpdateCheckResult | null; 
 
         case 'update-available':
             return (
-                <p className='flex items-center justify-center gap-2 text-sm text-warning'>
-                    <ArrowUpCircleFill size={14} />
-                    {result.url ? (
-                        <>
-                            Version {result.version} is available.{' '}
-                            <a className='link' href={result.url} target='_blank' rel='noreferrer'>
-                                Download
-                            </a>
-                        </>
-                    ) : (
-                        <>Version {result.version} is available.</>
-                    )}
-                </p>
+                <>
+                    <p className='flex items-center justify-center gap-2 text-sm text-warning'>
+                        <ArrowUpCircleFill size={14} />
+                        Version {result.version} is available.
+                    </p>
+
+                    {/* The app is unsigned, so there is no in-app install: downloading
+                        opens the release page and the user runs the installer. */}
+                    <div className='mt-3 flex justify-center gap-2'>
+                        <button className='btn btn-warning btn-sm' onClick={onDownload}>
+                            Download Now
+                        </button>
+                        <button className='btn btn-ghost btn-sm' onClick={() => onRemindLater(result.version)}>
+                            Remind Me Later
+                        </button>
+                    </div>
+                </>
             );
 
         case 'error':
@@ -132,6 +143,18 @@ export default function AboutModal({ open, onClose }: AboutModalProps) {
         void runUpdateCheck();
     }, [open, runUpdateCheck]);
 
+    const handleDownload = useCallback(() => {
+        void window.electronAPI.openReleasePage();
+    }, []);
+
+    const handleRemindLater = useCallback(
+        (version: string) => {
+            window.electronAPI.snoozeUpdate(version);
+            onClose();
+        },
+        [onClose]
+    );
+
     return (
         <>
             <dialog ref={dialogRef} className='modal' onClose={onClose}>
@@ -145,7 +168,7 @@ export default function AboutModal({ open, onClose }: AboutModalProps) {
                     <p className='text-sm opacity-70'>Version {version ?? '—'}</p>
 
                     <div className='mt-4'>
-                        <UpdateStatus result={update} checking={checking} />
+                        <UpdateStatus result={update} checking={checking} onDownload={handleDownload} onRemindLater={handleRemindLater} />
                     </div>
 
                     <div className='mt-4 flex justify-center gap-1'>
