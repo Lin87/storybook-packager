@@ -6,6 +6,7 @@ import { useAuthoring } from '@/features/authoring/state/AuthoringProvider';
 import PanelRouter from '@/features/authoring/panels/PanelRouter';
 import Sidebar, { SidebarHandle } from '@/features/authoring/sidebar/Sidebar';
 import { showToast } from '@/components/toast';
+import AboutModal from '@/components/AboutModal';
 
 export default function AuthoringScreen() {
     const searchParams = useSearchParams();
@@ -13,6 +14,7 @@ export default function AuthoringScreen() {
 
     const pathParam = searchParams.get('path');
     const [error, setError] = useState<string | null>(null);
+    const [aboutOpen, setAboutOpen] = useState(false);
 
     const sidebarRef = useRef<SidebarHandle>(null);
 
@@ -143,21 +145,36 @@ export default function AuthoringScreen() {
     }, [dispatch, state.presentationPath, state.xml]);
 
     useEffect(() => {
+        const unsubscribe = window.electronAPI.onMenuHelpAbout(() => {
+            setAboutOpen(true);
+        });
+
+        return unsubscribe;
+    }, []);
+
+    useEffect(() => {
         window.electronAPI.setEditorDirty(state.dirty);
     }, [state.dirty]);
 
-    if (error) {
-        return <p className='p-4 text-error'>{error}</p>;
-    }
+    let content;
 
-    if (!state.xml) {
-        return <p className='p-4'>Loading...</p>;
+    if (error) {
+        content = <p className='p-4 text-error'>{error}</p>;
+    } else if (!state.xml) {
+        content = <p className='p-4'>Loading...</p>;
+    } else {
+        content = (
+            <div className='flex h-full w-full overflow-hidden'>
+                <Sidebar ref={sidebarRef} />
+                <PanelRouter sidebarRef={sidebarRef} />
+            </div>
+        );
     }
 
     return (
-        <div className='flex h-full w-full overflow-hidden'>
-            <Sidebar ref={sidebarRef} />
-            <PanelRouter sidebarRef={sidebarRef} />
-        </div>
+        <>
+            {content}
+            <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
+        </>
     );
 }

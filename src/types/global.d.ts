@@ -2,6 +2,7 @@ export {};
 
 import type { StorybookXml } from "./sbplus";
 import type { ValidationResult } from "../lib/presentationValidation";
+import type { UpdateCheckResult } from "./updates";
 
 type SaveReason = "menu" | "close";
 
@@ -63,6 +64,8 @@ declare global {
     interface Window {
         electronAPI: {
             getPlatform: () => Promise<NodeJS.Platform>;
+            getAppVersion: () => Promise<string>;
+            checkForUpdates: () => Promise<UpdateCheckResult>;
             setWindowTitle: (title: string, edited?: boolean) => void;
             createNewPresentation: () => Promise<string | { error: string } | null>;
             openExistingPresentation: () => Promise<string | { error: string } | null>;
@@ -78,6 +81,7 @@ declare global {
             showValidationResults: (payload: ShowValidationResultsPayload) => Promise<{ success: true } | { success: false; error: string }>;
             onMenuFileSave: (callback: (request: SaveRequest) => Promise<Exclude<SaveResult, null>> | Exclude<SaveResult, null>) => () => void;
             onMenuFileSaveAs: (callback: (request: SaveAsRequest) => Promise<SaveResult> | SaveResult) => () => void;
+            onMenuHelpAbout: (callback: () => void) => () => void;
             setEditorDirty: (dirty: boolean) => void;
         };
     }

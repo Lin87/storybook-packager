@@ -123,7 +123,7 @@ The contract lives in three places and all three must be edited together:
 - **`sharp` and `electron-default-menu` are declared dependencies but unused in `src/`.** `sharp` exists only for the `predist` electron-builder workaround; the menu is hand-built in `buildAppMenu()`. Don't "fix" this by wiring them up.
 - **ESLint deliberately disables** `react-hooks/immutability`, `react-hooks/refs`, and `react-hooks/set-state-in-effect` (the `react-hooks-compiler-advisory-compat` block in [eslint.config.mjs](eslint.config.mjs)). Leave them off.
 - **Export writes a directory, not an archive**, despite the app's name and the zip icon on the button.
-- Help → About and Help → Check for Updates are stubs that say so. There is no auto-update.
+- Help → About sends `menu:help-about` to the focused window, which opens [src/components/AboutModal.tsx](src/components/AboutModal.tsx). The welcome window has no menu bar, so it triggers the same modal from an About button. Check for Updates now lives inside that modal, and `app:check-for-updates` always returns `{ status: 'unsupported' }` — there is still no auto-update.
 - No CI (`.github/` does not exist), no husky, no lint-staged, no Prettier, no `.editorconfig` — formatting is manual, so match the surrounding file.
 
 ## Conventions

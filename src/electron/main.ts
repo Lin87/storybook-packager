@@ -10,6 +10,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { Builder, parseStringPromise } from 'xml2js';
 import type { StorybookXml } from '../types/sbplus';
+import type { UpdateCheckResult } from '../types/updates';
 import { loadWelcomeWindowState, saveWelcomeWindowState, loadEditorWindowState, saveEditorWindowState } from './windowState.js';
 import { validatePresentation } from '../lib/presentationValidation.js';
 import type { ValidationItem, ValidationResult, ValidationSeverity } from '../lib/presentationValidation.js';
@@ -31,6 +32,46 @@ let staticPort: number;
 let lastClosedWindow: 'editor' | 'welcome' | null = null;
 const allowWindowClose = new Set<number>();
 let isQuitting = false;
+
+let cachedVersion: string | null = null;
+
+/**
+ * Reads the `version` field from package.json, so bumping that one field is all
+ * it takes for the About modal to report a new version.
+ */
+function getPackageVersion(): string {
+    if (cachedVersion) return cachedVersion;
+
+    const candidates = [
+        path.join(app.getAppPath(), 'package.json'), // packaged
+        path.join(__dirname, '..', '..', 'package.json'), // dev
+    ];
+
+    for (const candidate of candidates) {
+        try {
+            const parsed = JSON.parse(fs.readFileSync(candidate, 'utf-8')) as { version?: string };
+            if (typeof parsed.version === 'string' && parsed.version) {
+                cachedVersion = parsed.version;
+                return cachedVersion;
+            }
+        } catch {
+            // Try the next candidate.
+        }
+    }
+
+    return 'unknown';
+}
+
+function aboutMenuItem(): Electron.MenuItemConstructorOptions {
+    return {
+        label: 'About Storybook Packager',
+        click: () => {
+            const win = BrowserWindow.getFocusedWindow();
+            if (!win || win.isDestroyed()) return;
+            win.webContents.send('menu:help-about');
+        },
+    };
+}
 
 function buildAppMenu() {
     const editorEnabled = isEditorFocused();
@@ -86,36 +127,25 @@ function buildAppMenu() {
 
         {
             label: 'Help',
-            submenu: [
-                {
-                    label: 'About',
-                    click: async () => {
-                        await dialog.showMessageBox({
-                            type: 'info',
-                            title: 'About',
-                            message: 'Storybook Packager',
-                            detail: 'About is not implemented yet.',
-                        });
-                    },
-                },
-                {
-                    label: 'Check for Updates',
-                    click: async () => {
-                        await dialog.showMessageBox({
-                            type: 'info',
-                            title: 'Check for Updates',
-                            message: 'Check for Updates is not implemented yet.',
-                        });
-                    },
-                },
-            ],
+            submenu: [aboutMenuItem()],
         },
     ];
 
-    // macOS app menu (required for proper behavior)
+    // macOS app menu (required for proper behavior).
     if (process.platform === 'darwin') {
         template.unshift({
-            role: 'appMenu',
+            label: app.name,
+            submenu: [
+                aboutMenuItem(),
+                { type: 'separator' },
+                { role: 'services' },
+                { type: 'separator' },
+                { role: 'hide' },
+                { role: 'hideOthers' },
+                { role: 'unhide' },
+                { type: 'separator' },
+                { role: 'quit' },
+            ],
         });
     }
 
@@ -170,6 +200,16 @@ function registerIpcHandlers() {
         return process.platform;
     });
 
+    ipcMain.handle('app:get-version', () => {
+        return getPackageVersion();
+    });
+
+    // Placeholder until the auto-update phase: the renderer already renders every
+    // UpdateCheckResult branch, so only this handler needs to change later.
+    ipcMain.handle('app:check-for-updates', (): UpdateCheckResult => {
+        return { status: 'unsupported' };
+    });
+
     ipcMain.on('window:set-title', (event, payload: { title: string; edited?: boolean }) => {
         const win = BrowserWindow.fromWebContents(event.sender);
         if (!win || win.isDestroyed()) return;
@@ -183,7 +223,7 @@ function registerIpcHandlers() {
 
         win.setTitle(fullTitle);
 
-        // macOS "document edited" indicator (dot in titlebar)
+        // macOS "document edited" indicator (dot in title bar)
         if (process.platform === 'darwin') {
             win.setDocumentEdited(edited);
         }

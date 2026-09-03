@@ -7,12 +7,14 @@ import RecentFilesSection from "./RecentFilesSection";
 import AppTitleBar from "./AppTitleBar";
 import NewPresentationButton from "./NewPresentationButton";
 import OpenExistingButton from "./OpenExistingButton";
+import AboutModal from "@/components/AboutModal";
 import clsx from "clsx";
 
 export default function WelcomeScreen() {
 
     const currentYear = new Date().getFullYear();
     const [isMac, setIsMac] = useState(false);
+    const [aboutOpen, setAboutOpen] = useState(false);
 
     useEffect(() => {
         window.electronAPI.getPlatform().then(platform => {
@@ -32,13 +34,19 @@ export default function WelcomeScreen() {
                             <NewPresentationButton />
                             <OpenExistingButton />
                         </div>
-                        <p className="text-center text-xs text-gray-500 dark:text-gray-400">Copyright &copy; {currentYear} Ethan Lin. Sponsored by Excelsior University.</p>
+                        <div className="flex flex-col gap-2 mt-4">
+                            <div className="text-center">
+                                <button className="btn btn-ghost btn-xs" onClick={() => setAboutOpen(true)}>About Storybook Packager</button>
+                            </div>
+                            <p className="text-center text-xs text-gray-500 dark:text-gray-400">Copyright &copy; {currentYear} Ethan Lin. Sponsored by Excelsior University.</p>
+                        </div>
                     </div>
                     <div className="flex-1">
                         <RecentFilesSection />
                     </div>
                 </div>
             </div>
+            <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
         </>
     );
 }

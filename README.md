@@ -120,7 +120,7 @@ This builds the Next.js static export, compiles the Electron main process, and r
 
 Version 0.1.0, in active development. Known gaps:
 
-- Help → About and Help → Check for Updates are placeholders.
+- Help → About shows the app version and an update status, but the update check itself is a placeholder.
 - There is no auto-update mechanism.
 - Export produces a packaged folder, not an archive.
 

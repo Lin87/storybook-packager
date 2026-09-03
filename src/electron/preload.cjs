@@ -13,6 +13,8 @@ function normalizeSaveResult(result, fallbackError) {
 
 contextBridge.exposeInMainWorld('electronAPI', {
     getPlatform: () => ipcRenderer.invoke("app:get-platform"),
+    getAppVersion: () => ipcRenderer.invoke("app:get-version"),
+    checkForUpdates: () => ipcRenderer.invoke("app:check-for-updates"),
     setWindowTitle: (title, edited = false) => ipcRenderer.send("window:set-title", {title, edited}),
     createNewPresentation: () => ipcRenderer.invoke('create-new-presentation'),
     openExistingPresentation: () => ipcRenderer.invoke('open-existing-presentation'),
@@ -79,6 +81,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
         return () => {
             ipcRenderer.removeListener('menu:file-save-as', handler);
+        };
+    },
+    onMenuHelpAbout: (callback) => {
+        const handler = () => callback();
+
+        ipcRenderer.on('menu:help-about', handler);
+
+        return () => {
+            ipcRenderer.removeListener('menu:help-about', handler);
         };
     },
     setEditorDirty: (dirty) => ipcRenderer.send("editor:set-dirty", Boolean(dirty)),
