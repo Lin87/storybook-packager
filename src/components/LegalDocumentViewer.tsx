@@ -91,7 +91,7 @@ export default function LegalDocumentViewer({ activeDoc, onDocChange }: LegalDoc
 
             {doc.note && <p className='shrink-0 px-1 pt-2 text-xs opacity-70'>{doc.note}</p>}
 
-            <div ref={scrollRef} className='mt-2 flex-1 min-h-0 overflow-y-auto rounded-md border border-base-300 bg-base-200 p-4' onClick={handleClick}>
+            <div ref={scrollRef} className='mt-2 flex-1 min-h-0 overflow-y-auto rounded-md border border-base-100 bg-base-300 p-4' onClick={handleClick}>
                 {html !== undefined ? (
                     <div dangerouslySetInnerHTML={{ __html: html }} />
                 ) : error ? (
