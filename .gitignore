@@ -263,3 +263,10 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/node,windows,macos,visualstudiocode,nextjs,react
+
+# project specific
+dist-electron
+.test-build
+
+# generated from docs/legal/*.md and LICENSE by env-scripts/build-legal-docs.mjs
+public/legal/

@@ -1,0 +1,163 @@
+@import 'tailwindcss';
+@plugin "daisyui" {
+    themes:
+        light --default,
+        dim --prefersdark;
+}
+
+html,
+body,
+#__next {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    font-size: 14px;
+    overflow: hidden;
+}
+
+body {
+    font-family: var(--font-poppins-sans);
+}
+
+code,
+pre {
+    font-family: var(--font-dm-mono);
+}
+
+.drag-region {
+    -webkit-app-region: drag;
+}
+
+.no-drag {
+    -webkit-app-region: no-drag;
+}
+
+/* Legal documents generated into public/legal/ by env-scripts/build-legal-docs.mjs. */
+.legal-doc {
+    font-size: 0.875rem;
+    line-height: 1.6;
+}
+
+.legal-doc h1 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.legal-doc h2 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.legal-doc h3 {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    margin-top: 1rem;
+    margin-bottom: 0.25rem;
+}
+
+.legal-doc p {
+    margin-bottom: 0.75rem;
+}
+
+.legal-doc ul {
+    list-style: disc;
+    padding-left: 1.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.legal-doc li {
+    margin-bottom: 0.25rem;
+}
+
+.legal-doc strong {
+    font-weight: 600;
+}
+
+.legal-doc a {
+    color: var(--color-primary);
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.legal-doc > :first-child {
+    margin-top: 0;
+}
+
+/* The LICENSE is fixed-width ASCII, so keep its layout without forcing the page to scroll sideways. */
+.legal-doc pre.legal-plain {
+    font-size: 0.75rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    margin: 0;
+}
+
+.preview {
+    box-shadow: 0 0 0 1px var(--color-base-100) inset;
+    background-image: repeating-linear-gradient(-45deg, var(--color-base-100), var(--color-base-100) 13px, var(--color-base-200) 13px, var(--color-base-200) 14px);
+    background-size: 40px 40px;
+}
+
+html.dark,
+body.dark {
+    --tt-dropdown-menu-bg-color: var(--tt-gray-dark-50);
+    --tt-dropdown-menu-text-color: var(--tt-gray-dark-a-600);
+    --tt-dropdown-menu-label-color: var(--tt-gray-dark-a-800);
+    --tt-popover-border-color: var(--tt-gray-dark-a-50);
+    --tt-popover-bg-color: var(--tt-gray-dark-50);
+    --tt-popover-text-color: var(--tt-gray-dark-a-600);
+}
+
+.rich-text-editor .simple-editor-embedded {
+    display: flex;
+    flex-direction: column;
+}
+
+.rich-text-editor .simple-editor-content {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.rich-text-editor .simple-editor-content .tiptap.ProseMirror.simple-editor {
+    flex: 1;
+    padding: 0.875rem 1rem;
+    font-family: var(--font-poppins-sans);
+    background: color-mix(in srgb, var(--color-base-100) 72%, white);
+    min-height: inherit;
+}
+
+html.dark .rich-text-editor .simple-editor-content .tiptap.ProseMirror.simple-editor,
+body.dark .rich-text-editor .simple-editor-content .tiptap.ProseMirror.simple-editor {
+    background: color-mix(in srgb, var(--color-base-300) 82%, black);
+}
+
+.rich-text-editor .simple-editor-content .tiptap.ProseMirror.simple-editor > :first-child {
+    margin-top: 0;
+}
+
+.rich-text-editor .simple-editor-content .tiptap.ProseMirror.simple-editor > :last-child {
+    margin-bottom: 0;
+}
+
+.rich-text-editor .simple-editor-content .tiptap.ProseMirror.simple-editor h5,
+.rich-text-editor .simple-editor-content .tiptap.ProseMirror.simple-editor h6 {
+    position: relative;
+    color: inherit;
+    font-style: inherit;
+}
+
+.rich-text-editor .simple-editor-content .tiptap.ProseMirror.simple-editor h5 {
+    font-size: 0.95em;
+    font-weight: 600;
+    margin-top: 1.75em;
+}
+
+.rich-text-editor .simple-editor-content .tiptap.ProseMirror.simple-editor h6 {
+    font-size: 0.875em;
+    font-weight: 600;
+    margin-top: 1.5em;
+}

@@ -1,0 +1,46 @@
+"use client";
+
+import { useState } from "react";
+import { ExclamationTriangleFill } from "react-bootstrap-icons";
+import { showToast } from "@/components/toast";
+
+function NewPresentationButton() {
+    const [loading, setLoading] = useState(false);
+
+    const handleNew = async () => {
+        setLoading(true);
+
+        try {
+            const result = await window.electronAPI.createNewPresentation();
+
+            if (result === null) {
+                // User canceled folder picker — silently return
+                return;
+            }
+
+            if (isErrorResult(result)) {
+                showToast(`Failed to create presentation. ${result?.error ?? "Unknown error."}`, "error", <ExclamationTriangleFill />);
+                return;
+            }
+
+            if (typeof result === "string") {
+                window.dispatchEvent(new CustomEvent("recent-files-updated"));
+                window.electronAPI.openEditorWindow(result);
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <button className="btn btn-primary" onClick={handleNew} disabled={loading}>
+            {loading ? "Creating..." : "New Presentation"}
+        </button>
+    );
+}
+
+function isErrorResult(result: unknown): result is { error: string } {
+    return typeof result === "object" && result !== null && "error" in result;
+}
+
+export default NewPresentationButton;
