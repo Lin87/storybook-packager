@@ -106,7 +106,7 @@ This builds the Next.js static export, compiles the Electron main process, and r
 
 | Path | Purpose |
 | --- | --- |
-| [src/app/](src/app/) | Next.js App Router entries — welcome screen at `/`, editor at `/editor` |
+| [src/app/](src/app/) | Next.js App Router entries — welcome screen at `/`, first-run agreement at `/first-run`, editor at `/editor` |
 | [src/electron/](src/electron/) | Electron main process: windows, native menu, dialogs, filesystem, XML I/O |
 | [src/features/welcome/](src/features/welcome/) | Welcome screen UI |
 | [src/features/authoring/](src/features/authoring/) | The editor — sidebar, panels, page editors, domain model, state |
@@ -115,6 +115,12 @@ This builds the Next.js static export, compiles the Electron main process, and r
 | [src/types/](src/types/) | `sbplus.xml` domain types and ambient declarations |
 | [src/styles/](src/styles/) | Global SCSS design tokens and keyframes |
 | [src/vendor/](src/vendor/) | Vendored third-party UI (TipTap simple editor template) |
+
+## First launch
+
+On first launch the app shows an agreement screen instead of the welcome screen. It presents the [Terms and Conditions](docs/legal/TERMS.md) and [Privacy Policy](docs/legal/PRIVACY.md), which must be accepted before the app can be used, alongside the [GPL-3.0 license](LICENSE) for reference. Declining exits the app. All three documents remain available afterwards from Help → About.
+
+Acceptance is recorded per document version in the app's data folder, so materially updated documents are presented again. The in-app copies are generated from `docs/legal/*.md` and `LICENSE` into `public/legal/` by `npm run build:legal`, which runs automatically before `npm run dev` and `npm run build:next`.
 
 ## Status
 

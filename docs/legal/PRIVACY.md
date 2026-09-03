@@ -44,6 +44,8 @@ Storybook Packager does not include Publisher-operated behavioral analytics, adv
 
 The Application also does not automatically send crash reports to Publisher.
 
+The Application stores a small amount of local application state on your own computer, including window positions, a list of recently opened projects, and a record of your acceptance of the Terms and Privacy Policy (the accepted document version, the date and time of acceptance, and the application version in use). This information stays in the Application's data folder on your computer and is not transmitted to Publisher.
+
 ## 4. Software Updates and Network Requests
 
 The current Application does not include an automatic software-update mechanism. The in-app update check currently reports that update checks are not available.
@@ -145,7 +147,7 @@ We do not claim that information is shared with a category of recipient unless s
 
 ## 11. Data Retention
 
-Files stored locally through Storybook Packager remain under your control and are retained until you modify or delete them or your storage system does so.
+Files stored locally through Storybook Packager remain under your control and are retained until you modify or delete them or your storage system does so. The same applies to the Application's local state described in Section 3, including the record of your acceptance of the Terms and Privacy Policy.
 
 For personal information actually received by Publisher, we retain information only for as long as reasonably necessary for the purpose for which it was collected, including security, support, recordkeeping, legal, or compliance purposes.
 

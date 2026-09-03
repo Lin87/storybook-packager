@@ -8,7 +8,9 @@ The Application is made available by **Ethan Lin** ("Publisher," "we," "us," or 
 
 By downloading, installing, accessing, or using the Application, you agree to these Terms. If you do not agree to these Terms, do not use the Application.
 
-You do not need to accept these Terms merely to exercise rights granted directly by the Open-Source License. Those rights are governed by the Open-Source License.
+Publisher's executable distribution of the Application presents these Terms and the Privacy Policy when the Application is first launched and requires your acceptance before the Application can be used. If you decline, the Application exits.
+
+Acceptance of these Terms and the Privacy Policy is required to use Publisher's distribution of the Application. The Open-Source License grants its rights to you directly and independently of these Terms, and reviewing that license is not a condition of these Terms or of the first-launch acceptance step.
 
 ## 1. About Storybook Packager
 
@@ -25,6 +27,8 @@ The source code for Storybook Packager is licensed under the open-source license
 Your rights to copy, modify, distribute, sublicense, or otherwise use source code governed by the Open-Source License are determined by that license. These Terms do not revoke, limit, or supersede rights expressly granted to you under the Open-Source License.
 
 To the extent of any direct conflict between these Terms and the Open-Source License concerning rights granted under that license, the Open-Source License controls with respect to the licensed source code.
+
+The full text of the Open-Source License is included in the Application for reference and can be viewed from the first-launch screen and from the Application's About window.
 
 Third-party software incorporated into or distributed with the Application may be subject to separate licenses and notices.
 
@@ -226,6 +230,8 @@ Nothing in these Terms limits rights or protections that cannot be waived under 
 Publisher may update these Terms from time to time.
 
 When material changes are made, Publisher will update the Effective Date and provide notice in a manner reasonably appropriate to the circumstances, such as through the project's website, repository, release notes, or Application.
+
+Your acceptance is recorded against the version of these Terms and the Privacy Policy that you accepted. When those documents are materially updated, the Application presents them again and asks you to accept the updated version.
 
 Your continued use of a version of the Application after updated Terms become applicable constitutes acceptance only to the extent permitted by applicable law.
 

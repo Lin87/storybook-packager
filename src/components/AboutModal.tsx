@@ -5,6 +5,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowUpCircleFill, CheckCircleFill, ExclamationTriangleFill, InfoCircleFill } from 'react-bootstrap-icons';
 import type { UpdateCheckResult } from '@/types/updates';
+import LegalModal from './LegalModal';
+import type { LegalDocId } from '@/lib/legal';
 
 interface AboutModalProps {
     open: boolean;
@@ -75,6 +77,7 @@ export default function AboutModal({ open, onClose }: AboutModalProps) {
     const [version, setVersion] = useState<string | null>(null);
     const [update, setUpdate] = useState<UpdateCheckResult | null>(null);
     const [checking, setChecking] = useState(false);
+    const [legalDoc, setLegalDoc] = useState<LegalDocId | null>(null);
 
     useEffect(() => {
         const dialog = dialogRef.current;
@@ -130,28 +133,45 @@ export default function AboutModal({ open, onClose }: AboutModalProps) {
     }, [open, runUpdateCheck]);
 
     return (
-        <dialog ref={dialogRef} className='modal' onClose={onClose}>
-            <div className='modal-box text-center'>
-                <form method="dialog">
-                    <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
-                </form>
-                <img src='/icons/icon.png' alt='' className='w-24 mx-auto' />
+        <>
+            <dialog ref={dialogRef} className='modal' onClose={onClose}>
+                <div className='modal-box text-center'>
+                    <form method="dialog">
+                        <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+                    </form>
+                    <img src='/icons/icon.png' alt='' className='w-24 mx-auto' />
 
-                <h3 className='font-bold text-lg mt-2'>Storybook Packager</h3>
-                <p className='text-sm opacity-70'>Version {version ?? '—'}</p>
+                    <h3 className='font-bold text-lg mt-2'>Storybook Packager</h3>
+                    <p className='text-sm opacity-70'>Version {version ?? '—'}</p>
 
-                <div className='mt-4'>
-                    <UpdateStatus result={update} checking={checking} />
+                    <div className='mt-4'>
+                        <UpdateStatus result={update} checking={checking} />
+                    </div>
+
+                    <div className='mt-4 flex justify-center gap-1'>
+                        <button className='btn btn-ghost btn-xs' onClick={() => setLegalDoc('terms')}>
+                            Terms
+                        </button>
+                        <button className='btn btn-ghost btn-xs' onClick={() => setLegalDoc('privacy')}>
+                            Privacy
+                        </button>
+                        <button className='btn btn-ghost btn-xs' onClick={() => setLegalDoc('license')}>
+                            License
+                        </button>
+                    </div>
+
+                    <p className='mt-2 text-xs opacity-60'>Copyright &copy; {currentYear} Ethan Lin. Sponsored by Excelsior University.</p>
+
+                    <div className='modal-action justify-center'>
+                        <button className='btn btn-primary' onClick={() => void runUpdateCheck()} disabled={checking}>
+                            Check for Updates
+                        </button>
+                    </div>
                 </div>
+            </dialog>
 
-                <p className='mt-4 text-xs opacity-60'>Copyright &copy; {currentYear} Ethan Lin. Sponsored by Excelsior University.</p>
-
-                <div className='modal-action justify-center'>
-                    <button className='btn btn-primary' onClick={() => void runUpdateCheck()} disabled={checking}>
-                        Check for Updates
-                    </button>
-                </div>
-            </div>
-        </dialog>
+            {/* A sibling rather than a child: a nested dialog's close event bubbles up and would close the About modal too. */}
+            <LegalModal open={legalDoc !== null} activeDoc={legalDoc ?? 'terms'} onDocChange={setLegalDoc} onClose={() => setLegalDoc(null)} />
+        </>
     );
 }

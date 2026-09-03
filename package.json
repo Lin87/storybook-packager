@@ -8,6 +8,9 @@
     "type": "module",
     "scripts": {
         "dev:next": "next dev",
+        "build:legal": "node env-scripts/build-legal-docs.mjs",
+        "predev": "npm run build:legal",
+        "prebuild:next": "npm run build:legal",
         "start:electron:dev": "wait-on http://localhost:3000 && node env-scripts/start-electron-dev.cjs",
         "start:electron:prod": "node env-scripts/build-and-start-electron-prod.cjs",
         "dev": "concurrently -n NEXT,ELECTRON -c green,blue \"npm run dev:next\" \"npm run start:electron:dev\"",
@@ -95,6 +98,7 @@
         "electron-builder": "^26.15.3",
         "eslint": "^9.39.5",
         "eslint-config-next": "16.3.4",
+        "marked": "^18.0.11",
         "sass": "^1.103.1",
         "tailwindcss": "^4.3.3",
         "typescript": "6.0.3",

@@ -267,3 +267,6 @@ $RECYCLE.BIN/
 # project specific
 dist-electron
 .test-build
+
+# generated from docs/legal/*.md and LICENSE by env-scripts/build-legal-docs.mjs
+public/legal/

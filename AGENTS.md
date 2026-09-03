@@ -8,7 +8,7 @@ An Electron desktop app with a Next.js renderer:
 
 - **Main process** — [src/electron/main.ts](src/electron/main.ts) owns windows, the native menu, native dialogs, all filesystem access, and `sbplus.xml` parsing/serialization. [src/electron/preload.cjs](src/electron/preload.cjs) exposes `window.electronAPI` over `contextBridge` (`contextIsolation: true`, `nodeIntegration: false`).
 - **Renderer** — Next.js App Router built as a **static export** (`output: 'export'`, `distDir: 'out'` in [next.config.ts](next.config.ts)). In dev it loads `http://localhost:3000`; in packaged builds `main.ts` starts an Express static server on a free port in 3005–3999 (`startStaticServer()` + `get-port`) and loads that.
-- Two windows: a frameless welcome window (`/`) and editor windows (`/editor?path=<encoded folder>`). Window bounds are persisted by [src/electron/windowState.ts](src/electron/windowState.ts); the recent-files MRU and window state live as JSON in `app.getPath('userData')`.
+- Three windows: a frameless welcome window (`/`), editor windows (`/editor?path=<encoded folder>`), and a first-run agreement window (`/first-run`) shown instead of the welcome window until the current legal documents are accepted. Window bounds are persisted by [src/electron/windowState.ts](src/electron/windowState.ts); the recent-files MRU, window state, and legal acceptance (via [src/electron/legalAcceptance.ts](src/electron/legalAcceptance.ts)) live as JSON in `app.getPath('userData')`.
 
 There is no browser storage anywhere — no localStorage, no IndexedDB. All persistence is Node `fs` in the main process.
 
@@ -22,6 +22,7 @@ Run with npm (lockfile is `package-lock.json`; there is no `packageManager` or `
 | `npm run dev:next` | Next dev server only. |
 | `npm run start:electron:dev` | Waits for :3000, compiles the main process, launches Electron. |
 | `npm run start:electron:prod` | Full production-shaped run (static export + Express server). |
+| `npm run build:legal` | Generates `public/legal/*.html` from `docs/legal/*.md` + `LICENSE`. Runs automatically via the `predev` / `prebuild:next` hooks. |
 | `npm run build:next` | `next build` → `out/` |
 | `npm run build:electron` | `tsc -p tsconfig.electron.json` → `dist-electron/` |
 | `npm run build:prod` | next + electron + `predist` + `electron-builder` → `dist/` |
@@ -57,12 +58,14 @@ Styling is **Tailwind v4 CSS-first** — there is no `tailwind.config.*`. Config
 
 ```text
 src/
-  app/                    Next App Router: layout, / (welcome), /editor
-  components/             App-wide shared UI, flat: ConfirmDialog, DeleteButton,
-                          DragHandle, FormControls, SystemThemeSync, toast
-  electron/               main.ts, windowState.ts, preload.cjs
+  app/                    Next App Router: layout, / (welcome), /first-run, /editor
+  components/             App-wide shared UI, flat: AboutModal, ConfirmDialog, DeleteButton,
+                          DragHandle, FormControls, LegalDocumentViewer, LegalModal,
+                          SystemThemeSync, toast
+  electron/               main.ts, windowState.ts, legalAcceptance.ts, preload.cjs
   features/
     welcome/              WelcomeScreen, AppTitleBar, New/Open buttons, RecentFilesSection
+    firstRun/             FirstRunScreen — legal acceptance gate
     authoring/            The editor
       AuthoringScreen.tsx   reads ?path, loads XML, renders Sidebar + PanelRouter
       model/pageModel.ts    page types, PageCapabilities matrix, type conversion
@@ -70,7 +73,7 @@ src/
       panels/               PanelRouter, SetupPanel, SectionPanel, PagePanel
       sidebar/              Sidebar, sidebarUtils, useSidebarDnD
       state/                AuthoringProvider, authoringReducer, authoringTypes
-  lib/                    presentationValidation.ts, presentationPackage.ts
+  lib/                    presentationValidation.ts, presentationPackage.ts, legal.ts
                           — platform-independent; filesystem is injected, keep it that way
   styles/                 _variables.scss, _keyframe-animations.scss (TipTap tokens)
   types/                  sbplus.ts (domain), global.d.ts (IPC contract), scss.d.ts
@@ -124,6 +127,8 @@ The contract lives in three places and all three must be edited together:
 - **ESLint deliberately disables** `react-hooks/immutability`, `react-hooks/refs`, and `react-hooks/set-state-in-effect` (the `react-hooks-compiler-advisory-compat` block in [eslint.config.mjs](eslint.config.mjs)). Leave them off.
 - **Export writes a directory, not an archive**, despite the app's name and the zip icon on the button.
 - Help → About sends `menu:help-about` to the focused window, which opens [src/components/AboutModal.tsx](src/components/AboutModal.tsx). The welcome window has no menu bar, so it triggers the same modal from an About button. Check for Updates now lives inside that modal, and `app:check-for-updates` always returns `{ status: 'unsupported' }` — there is still no auto-update.
+- **The legal documents are rendered from generated HTML.** [env-scripts/build-legal-docs.mjs](env-scripts/build-legal-docs.mjs) converts `docs/legal/*.md` and the root `LICENSE` into gitignored fragments under `public/legal/`; `docs/` itself is not bundled. The app has **no** `shell.openExternal` and no `setWindowOpenHandler`, so the script unwraps every link that is not an in-app `#legal-*` tab anchor, and [src/components/LegalDocumentViewer.tsx](src/components/LegalDocumentViewer.tsx) swallows the rest — do not introduce an anchor that would open a bare Electron window. After editing a legal document, re-run `npm run build:legal` and bump `LEGAL_DOC_VERSION` in [src/lib/legal.ts](src/lib/legal.ts) if the change is material, which re-shows the first-run screen for users who already accepted.
+- **A `<dialog>` nested inside another `<dialog>` shares its `close` event** — it bubbles, so the parent's `onClose` fires too. [src/components/LegalModal.tsx](src/components/LegalModal.tsx) is therefore a sibling of the About dialog, not a child.
 - User-facing behavior changes may require docs/legal updates. When adding or changing accounts, telemetry, analytics, crash reporting, update checks, network requests, third-party integrations, licensing/distribution, data storage, exports, security reporting, accessibility claims, or support/contact flows, review and update [docs/legal/TERMS.md](docs/legal/TERMS.md), [docs/legal/PRIVACY.md](docs/legal/PRIVACY.md), and [README.md](README.md) as needed.
 - No CI (`.github/` does not exist), no husky, no lint-staged, no Prettier, no `.editorconfig` — formatting is manual, so match the surrounding file.
 

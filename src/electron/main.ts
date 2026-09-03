@@ -12,6 +12,9 @@ import { Builder, parseStringPromise } from 'xml2js';
 import type { StorybookXml } from '../types/sbplus';
 import type { UpdateCheckResult } from '../types/updates';
 import { loadWelcomeWindowState, saveWelcomeWindowState, loadEditorWindowState, saveEditorWindowState } from './windowState.js';
+import { hasAcceptedCurrentLegal, saveLegalAcceptance } from './legalAcceptance.js';
+import { LEGAL_DOC_VERSION } from '../lib/legal.js';
+import type { LegalState } from '../lib/legal.js';
 import { validatePresentation } from '../lib/presentationValidation.js';
 import type { ValidationItem, ValidationResult, ValidationSeverity } from '../lib/presentationValidation.js';
 import { exportPresentationPackageToDirectory } from '../lib/presentationPackage.js';
@@ -27,9 +30,10 @@ const recentFilePath: string = path.join(app.getPath('userData'), 'recent.json')
 const windowDirty = new Map<number, boolean>(); // track dirty state per window
 
 let welcomeWindow: BrowserWindow | null = null;
+let firstRunWindow: BrowserWindow | null = null;
 let staticServer: http.Server | null = null;
 let staticPort: number;
-let lastClosedWindow: 'editor' | 'welcome' | null = null;
+let lastClosedWindow: 'editor' | 'welcome' | 'first-run' | null = null;
 const allowWindowClose = new Set<number>();
 let isQuitting = false;
 
@@ -208,6 +212,26 @@ function registerIpcHandlers() {
     // UpdateCheckResult branch, so only this handler needs to change later.
     ipcMain.handle('app:check-for-updates', (): UpdateCheckResult => {
         return { status: 'unsupported' };
+    });
+
+    ipcMain.handle('legal:get-state', (): LegalState => {
+        return { accepted: hasAcceptedCurrentLegal(), version: LEGAL_DOC_VERSION };
+    });
+
+    ipcMain.handle('legal:accept', () => {
+        saveLegalAcceptance(getPackageVersion());
+
+        // Open the welcome window first so 'window-all-closed' never fires while
+        // the first-run window is on its way out.
+        createWelcomeWindow();
+
+        if (firstRunWindow && !firstRunWindow.isDestroyed()) {
+            firstRunWindow.close();
+        }
+    });
+
+    ipcMain.on('legal:decline', () => {
+        app.quit();
     });
 
     ipcMain.on('window:set-title', (event, payload: { title: string; edited?: boolean }) => {
@@ -603,6 +627,54 @@ function createWelcomeWindow() {
     });
 }
 
+/**
+ * Shown instead of the welcome window until the current Terms and Privacy Policy
+ * have been accepted. Roomier and resizable than the welcome window because the
+ * user has to actually read the documents here.
+ */
+function createFirstRunWindow() {
+    firstRunWindow = new BrowserWindow({
+        width: 760,
+        height: 680,
+        minWidth: 640,
+        minHeight: 520,
+        frame: false,
+        backgroundMaterial: 'mica',
+        visualEffectState: 'active',
+        vibrancy: 'under-window',
+        titleBarStyle: 'hidden',
+        trafficLightPosition: { x: 12, y: 10 },
+        icon: resolveAsset('icons/icon.png'),
+        webPreferences: {
+            preload: path.join(__dirname, 'preload.cjs'),
+            contextIsolation: true,
+            nodeIntegration: false,
+        },
+    });
+
+    const firstRunURL = isDev ? `${process.env.ELECTRON_START_URL}/first-run/` : `http://localhost:${staticPort}/first-run/`;
+
+    firstRunWindow.setMenuBarVisibility(false);
+    firstRunWindow.loadURL(firstRunURL);
+
+    firstRunWindow.on('close', () => {
+        lastClosedWindow = 'first-run';
+    });
+
+    firstRunWindow.on('closed', () => {
+        firstRunWindow = null;
+    });
+}
+
+/** Gates the app behind the agreement screen until the current documents are accepted. */
+function createStartupWindow() {
+    if (hasAcceptedCurrentLegal()) {
+        createWelcomeWindow();
+    } else {
+        createFirstRunWindow();
+    }
+}
+
 app.whenReady().then(async () => {
     app.on('browser-window-focus', () => buildAppMenu());
     app.on('browser-window-blur', () => buildAppMenu());
@@ -611,12 +683,12 @@ app.whenReady().then(async () => {
     if (!isDev) {
         staticPort = await startStaticServer(); // Only start Express server in prod mode
     }
-    createWelcomeWindow();
+    createStartupWindow();
 });
 
 app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-        createWelcomeWindow();
+        createStartupWindow();
     }
 });
 
@@ -626,7 +698,9 @@ app.on('window-all-closed', () => {
     }
 
     if (process.platform !== 'darwin') {
-        if (lastClosedWindow === 'welcome') {
+        // Dismissing the agreement screen without accepting exits the app rather
+        // than falling through to the welcome window.
+        if (lastClosedWindow === 'welcome' || lastClosedWindow === 'first-run') {
             app.quit();
         } else {
             createWelcomeWindow();

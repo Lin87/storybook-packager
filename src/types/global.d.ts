@@ -3,6 +3,7 @@ export {};
 import type { StorybookXml } from "./sbplus";
 import type { ValidationResult } from "../lib/presentationValidation";
 import type { UpdateCheckResult } from "./updates";
+import type { LegalState } from "../lib/legal";
 
 type SaveReason = "menu" | "close";
 
@@ -66,6 +67,9 @@ declare global {
             getPlatform: () => Promise<NodeJS.Platform>;
             getAppVersion: () => Promise<string>;
             checkForUpdates: () => Promise<UpdateCheckResult>;
+            getLegalState: () => Promise<LegalState>;
+            acceptLegal: () => Promise<void>;
+            declineLegal: () => void;
             setWindowTitle: (title: string, edited?: boolean) => void;
             createNewPresentation: () => Promise<string | { error: string } | null>;
             openExistingPresentation: () => Promise<string | { error: string } | null>;
