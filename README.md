@@ -124,6 +124,16 @@ Version 0.1.0, in active development. Known gaps:
 - There is no auto-update mechanism.
 - Export produces a packaged folder, not an archive.
 
+## Legal
+
+- [Terms and Conditions](docs/legal/TERMS.md)
+- [Privacy Policy](docs/legal/PRIVACY.md)
+- [GNU General Public License v3.0](LICENSE)
+
 ## License
 
 [GNU General Public License v3.0](LICENSE).
+
+## Copyright
+
+Copyright &copy; 2026 Ethan Lin. Storybook Packager is sponsored by Excelsior University.

@@ -124,6 +124,7 @@ The contract lives in three places and all three must be edited together:
 - **ESLint deliberately disables** `react-hooks/immutability`, `react-hooks/refs`, and `react-hooks/set-state-in-effect` (the `react-hooks-compiler-advisory-compat` block in [eslint.config.mjs](eslint.config.mjs)). Leave them off.
 - **Export writes a directory, not an archive**, despite the app's name and the zip icon on the button.
 - Help → About sends `menu:help-about` to the focused window, which opens [src/components/AboutModal.tsx](src/components/AboutModal.tsx). The welcome window has no menu bar, so it triggers the same modal from an About button. Check for Updates now lives inside that modal, and `app:check-for-updates` always returns `{ status: 'unsupported' }` — there is still no auto-update.
+- User-facing behavior changes may require docs/legal updates. When adding or changing accounts, telemetry, analytics, crash reporting, update checks, network requests, third-party integrations, licensing/distribution, data storage, exports, security reporting, accessibility claims, or support/contact flows, review and update [docs/legal/TERMS.md](docs/legal/TERMS.md), [docs/legal/PRIVACY.md](docs/legal/PRIVACY.md), and [README.md](README.md) as needed.
 - No CI (`.github/` does not exist), no husky, no lint-staged, no Prettier, no `.editorconfig` — formatting is manual, so match the surrounding file.
 
 ## Conventions
