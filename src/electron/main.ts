@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain, dialog, Menu, shell } from 'electron';
 
-app.setName('storybook-packager');
+app.setName('Storybook Packager');
 
 import express from 'express';
 import http from 'http';

@@ -27,6 +27,7 @@
     },
     "build": {
         "appId": "edu.excelsior.storybook-packager",
+        "productName": "Storybook Packager",
         "directories": {
             "buildResources": "public/icons",
             "output": "dist"
