@@ -19,7 +19,7 @@ if (fs.existsSync(distElectronDir)) {
  * Only used to reset dev-only state before launching.
  */
 function getUserDataDir() {
-    const appName = "storybook-packager";
+    const appName = "Storybook Packager";
 
     if (process.platform === "win32") {
         return path.join(process.env.APPDATA || path.join(os.homedir(), "AppData", "Roaming"), appName);

@@ -74,7 +74,58 @@ Exports an optional zip archive for sharing or delivery: the presentation assets
 
 Saving is driven by the native File menu — Save (`Ctrl`/`Cmd`+`S`, enabled only when there are unsaved changes), Save As, and Close. Unsaved changes are shown in the window title on Windows and Linux and as the edited dot on macOS, and closing a window with unsaved changes prompts to save, discard, or cancel.
 
-## Requirements
+## System requirements
+
+The app ships as a self-contained build — there is nothing to install alongside it, and no Node.js runtime is required to *use* it.
+
+| | Minimum |
+| --- | --- |
+| Windows | Windows 10 (version 1809) or Windows 11, 64-bit |
+| macOS | macOS 12 Monterey or later |
+| Linux | A 64-bit distribution with glibc 2.28 or newer (Ubuntu 20.04+, Debian 11+, Fedora 32+) |
+| Memory | 4 GB RAM; 8 GB is more comfortable when working with large media |
+| Disk | About 750 MB for the installed application (the Windows installer itself is a ~170 MB download), plus whatever your presentations need — media assets dominate that figure |
+| Display | 1024 × 768 or larger. The editor window enforces that as its minimum size |
+| Network | Not required. The app works entirely offline; the only request it makes on its own is the update check described below |
+
+The macOS and Linux builds are produced for the architecture of the machine that built them. An Intel (x64) macOS build runs on Apple Silicon through Rosetta 2.
+
+## Installing
+
+Download the build for your platform from the [releases page](https://github.com/Lin87/storybook-packager/releases).
+
+**Windows** — run `Storybook Packager Setup <version>.exe`. Windows SmartScreen will warn that the publisher is unrecognized because the build is not code-signed; choose **More info → Run anyway**. There is no setup wizard: the installer places the app in your user profile, adds Start Menu and desktop shortcuts, and launches it. No administrator rights are needed.
+
+**macOS** — open the `.dmg` and drag **Storybook Packager** into Applications. The build is neither signed nor notarized, so the first launch is blocked by Gatekeeper. Dismiss the warning, then open **System Settings → Privacy & Security**, find the message about Storybook Packager being blocked, and click **Open Anyway**.
+
+**Linux** — make the `.AppImage` executable and run it:
+
+```bash
+chmod +x "Storybook Packager-<version>.AppImage"
+./"Storybook Packager-<version>.AppImage"
+```
+
+There is no installation step; the AppImage is the whole application.
+
+On first launch the app shows the agreement screen described under [First launch](#first-launch) before anything else.
+
+## Updating
+
+Updates are **notify-only**. The app tells you when a new version exists but never downloads or installs anything on its own — installing is always a deliberate act, because the builds are unsigned and a silent background install of an unsigned binary is not something the app should do to you.
+
+**How you find out.** A few seconds after launch, at most once a day, the app asks GitHub whether a newer release has been published. If one has, a dialog offers **Download Now** or **Remind Me Later**; if you are up to date, or offline, that check passes in silence. You can also ask at any time — **Help → Check for Updates…**, or the **Check for Updates** button in **Help → About Storybook Packager**, which re-checks each time it opens. An explicit check always answers, including "you are up to date". On Windows and Linux the menu bar is only present in editor windows, so from the welcome screen use the About button.
+
+**Remind Me Later** hides that particular version from the launch-time prompt for seven days. A manual check still reports it, and a different, newer version prompts you straight away rather than inheriting the delay.
+
+**Installing the update.** Download Now opens the release page in your browser. Install the new version the same way you installed the first one:
+
+- **Windows** — run the new installer. It replaces the existing installation without prompting and relaunches the app.
+- **macOS** — drag the new app into Applications and confirm the replacement.
+- **Linux** — the new AppImage is a separate file; delete the old one yourself once you are happy with it.
+
+Your presentations are never touched — they are ordinary folders on disk, independent of the app. Recent-projects history, window positions, and your acceptance of the Terms and Privacy Policy also carry across an update, so you will not see the agreement screen again unless those documents change materially.
+
+## Development requirements
 
 - Node.js 24.x and npm (developed against Node 24.13, npm 11.19)
 - Windows, macOS, or Linux
@@ -100,7 +151,9 @@ npm run start:electron:prod
 npm run build:prod
 ```
 
-This builds the Next.js static export, compiles the Electron main process, and runs `electron-builder` — producing an NSIS installer on Windows, a DMG on macOS, and an AppImage on Linux, in `dist/`.
+This builds the Next.js static export, compiles the Electron main process, and runs `electron-builder` — producing `Storybook Packager Setup <version>.exe` (NSIS) on Windows, `Storybook Packager-<version>.dmg` on macOS, and `Storybook Packager-<version>.AppImage` on Linux, in `dist/`. Each installer can only be built on its own platform.
+
+The artifact and shortcut names come from `build.productName`, which must stay in step with the `app.setName('Storybook Packager')` call at the top of [src/electron/main.ts](src/electron/main.ts) — that one sets the userData folder name and the macOS app menu title. The kebab-case `storybook-packager` elsewhere (the npm package name, the `appId`, the repository) is identifier-shaped and intentionally stays lowercase.
 
 ## Releasing
 
@@ -116,7 +169,7 @@ The in-app update check reads the latest published release of [`Lin87/storybook-
 
 The tag must be `v<version>`, matching `package.json` exactly. `/releases/latest` skips drafts and prereleases, so marking a release as a prerelease is the way to stage a build without notifying anyone. The repository must stay public — the app makes an unauthenticated request and ships no token.
 
-Builds are unsigned on all three platforms: macOS users need to right-click → Open the first time, and Windows users will see a SmartScreen warning. Worth saying so in the release notes.
+Builds are unsigned on all three platforms, so every release should repeat the platform-specific steps from [Installing](#installing) in its notes — the SmartScreen bypass on Windows and the Privacy & Security → Open Anyway step on macOS. Users who do not expect those warnings tend to assume the download is broken.
 
 ## Project layout
 
@@ -142,7 +195,7 @@ Acceptance is recorded per document version in the app's data folder, so materia
 
 Version 0.1.0, in active development. Known gaps:
 
-- Updates are notify-only. Help → Check for Updates and the About window report whether a newer release exists and offer to open the download page; there is no automatic download or install, because the app is not code-signed on any platform.
+- The app is not code-signed on any platform, which is why installing and updating carry the warnings described under [Installing](#installing), and why [Updating](#updating) is notify-only rather than automatic.
 
 ## Legal
 
