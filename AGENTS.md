@@ -35,6 +35,12 @@ Run with npm (lockfile is `package-lock.json`; there is no `packageManager` or `
 
 GitHub Actions owns publishing: `.github/workflows/release.yml` runs on every push to `main`, reads `version` from `package.json`, fails if `v<version>` already exists, builds Windows x64, macOS Apple Silicon (`macos-latest` + `--arm64`), and Linux x64 installers, then creates the tag and published GitHub Release with those installers attached. Do not manually create a duplicate tag/release for the same package version.
 
+To publish a version, bump `version` in [package.json](package.json) and push the change to `main`. The tag must be `v<version>`, matching `package.json` exactly. The workflow publishes `Storybook Packager Setup <version>.exe` (NSIS) on Windows, `Storybook Packager-<version>.dmg` on macOS, and `Storybook Packager-<version>.AppImage` on Linux in the GitHub Release; local `npm run build:prod` writes the same platform's artifact to `dist/`.
+
+The in-app update check reads `/releases/latest` for [`Lin87/storybook-packager`](https://github.com/Lin87/storybook-packager/releases) from GitHub's public API. `/releases/latest` skips drafts and prereleases, so marking a release as a prerelease is the way to stage a build without notifying users. The repository must stay public because the app makes an unauthenticated request and ships no token.
+
+Builds are unsigned on all three platforms, so release notes must continue to repeat the platform-specific warnings from README: SmartScreen's **More info → Run anyway** path on Windows and **System Settings → Privacy & Security → Open Anyway** on macOS. Users who do not expect those warnings tend to assume the download is broken.
+
 ## Tests
 
 No framework: both suites use the built-in `node:test` runner.

@@ -113,9 +113,9 @@ On first launch the app shows the agreement screen described under [First launch
 
 ## Updating
 
-Updates are **notify-only**. The app tells you when a new version exists but never downloads or installs anything on its own — installing is always a deliberate act, because the builds are unsigned and a silent background install of an unsigned binary is not something the app should do to you.
+Updates are **notify-only**. The app tells you when a new version exists but never downloads or installs anything on its own.
 
-**How you find out.** A few seconds after launch, at most once a day, the app asks GitHub whether a newer release has been published. If one has, a dialog offers **Download Now** or **Remind Me Later**; if you are up to date, or offline, that check passes in silence. You can also ask at any time — **Help → Check for Updates…**, or the **Check for Updates** button in **Help → About Storybook Packager**, which re-checks each time it opens. An explicit check always answers, including "you are up to date". On Windows and Linux the menu bar is only present in editor windows, so from the welcome screen use the About button.
+A few seconds after launch, at most once a day, the app asks GitHub whether a newer release has been published. If one has, a dialog offers **Download Now** or **Remind Me Later**; if you are up to date, or offline, that check passes in silence. You can also ask at any time from **Help → Check for Updates…** or the **Check for Updates** button in **Help → About Storybook Packager**. On Windows and Linux the menu bar is only present in editor windows, so from the welcome screen use the About button.
 
 **Remind Me Later** hides that particular version from the launch-time prompt for seven days. A manual check still reports it, and a different, newer version prompts you straight away rather than inheriting the delay.
 
@@ -127,65 +127,15 @@ Updates are **notify-only**. The app tells you when a new version exists but nev
 
 Your presentations are never touched — they are ordinary folders on disk, independent of the app. Recent-projects history, window positions, and your acceptance of the Terms and Privacy Policy also carry across an update, so you will not see the agreement screen again unless those documents change materially.
 
-## Development requirements
+## Development
 
-- Node.js 24.x and npm (developed against Node 24.13, npm 11.19)
-- Windows, macOS, or Linux
-
-## Getting started
-
-```bash
-npm install
-npm run dev
-```
-
-`npm run dev` runs the Next.js dev server on port 3000 and launches Electron against it once the server is up, with both processes' output interleaved.
-
-To run the app the way it behaves when packaged (static export served over a local Express server instead of the dev server):
-
-```bash
-npm run start:electron:prod
-```
-
-## Building
-
-```bash
-npm run build:prod
-```
-
-This builds the Next.js static export, compiles the Electron main process, and runs `electron-builder` — producing `Storybook Packager Setup <version>.exe` (NSIS) on Windows, `Storybook Packager-<version>.dmg` on macOS, and `Storybook Packager-<version>.AppImage` on Linux, in `dist/`. Each installer can only be built on its own platform; the release workflow builds Windows x64, macOS Apple Silicon, and Linux x64 installers on matching GitHub-hosted runners.
-
-The artifact and shortcut names come from `build.productName`, which must stay in step with the `app.setName('Storybook Packager')` call at the top of [src/electron/main.ts](src/electron/main.ts) — that one sets the userData folder name and the macOS app menu title. The kebab-case `storybook-packager` elsewhere (the npm package name, the `appId`, the repository) is identifier-shaped and intentionally stays lowercase.
-
-## Releasing
-
-The in-app update check reads the latest published release of [`Lin87/storybook-packager`](https://github.com/Lin87/storybook-packager/releases) from GitHub's public API. To publish a version, bump `version` in `package.json` and push the change to `main`.
-
-The [Build and Release](https://github.com/Lin87/storybook-packager/actions/workflows/release.yml) workflow reads that version, fails if the matching `v<version>` tag already exists, builds the Windows x64, macOS Apple Silicon, and Linux x64 installers, creates the `v<version>` tag, and publishes the GitHub Release with the installers attached.
-
-The tag must be `v<version>`, matching `package.json` exactly. `/releases/latest` skips drafts and prereleases, so marking a release as a prerelease is the way to stage a build without notifying anyone. The repository must stay public — the app makes an unauthenticated request and ships no token.
-
-Builds are unsigned on all three platforms, so the automated release notes repeat the platform-specific warnings from [Installing](#installing) — the SmartScreen bypass on Windows and the Privacy & Security → Open Anyway step on macOS. Users who do not expect those warnings tend to assume the download is broken.
-
-## Project layout
-
-| Path | Purpose |
-| --- | --- |
-| [src/app/](src/app/) | Next.js App Router entries — welcome screen at `/`, first-run agreement at `/first-run`, editor at `/editor` |
-| [src/electron/](src/electron/) | Electron main process: windows, native menu, dialogs, filesystem, XML I/O |
-| [src/features/welcome/](src/features/welcome/) | Welcome screen UI |
-| [src/features/authoring/](src/features/authoring/) | The editor — sidebar, panels, page editors, domain model, state |
-| [src/lib/](src/lib/) | Platform-independent validation and export logic |
-| [src/components/](src/components/) | App-wide shared UI (dialogs, form controls, toasts) |
-| [src/types/](src/types/) | `sbplus.xml` domain types and ambient declarations |
-| [src/styles/](src/styles/) | Global SCSS design tokens and keyframes |
-| [src/vendor/](src/vendor/) | Vendored third-party UI (TipTap simple editor template) |
+For local setup, build and test commands, architecture notes, release guidance, and coding conventions, see [AGENTS.md](AGENTS.md).
 
 ## First launch
 
 On first launch the app shows an agreement screen instead of the welcome screen. It presents the [Terms and Conditions](docs/legal/TERMS.md) and [Privacy Policy](docs/legal/PRIVACY.md), which must be accepted before the app can be used, alongside the [GPL-3.0 license](LICENSE) for reference. Declining exits the app. All three documents remain available afterwards from Help → About.
 
-Acceptance is recorded per document version in the app's data folder, so materially updated documents are presented again. The in-app copies are generated from `docs/legal/*.md` and `LICENSE` into `public/legal/` by `npm run build:legal`, which runs automatically before `npm run dev` and `npm run build:next`.
+Acceptance is recorded per document version in the app's data folder, so materially updated documents are presented again.
 
 ## Known Issues
 

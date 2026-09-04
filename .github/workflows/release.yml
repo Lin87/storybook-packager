@@ -11,12 +11,13 @@ permissions:
 
 concurrency:
   group: release-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   preflight:
     name: Read version and check tag
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       version: ${{ steps.version.outputs.version }}
       tag: ${{ steps.version.outputs.tag }}
@@ -45,6 +46,7 @@ jobs:
     name: Build ${{ matrix.name }}
     needs: preflight
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
@@ -119,6 +121,7 @@ jobs:
       - preflight
       - build
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -144,10 +147,10 @@ jobs:
         run: |
           gh release create "${{ needs.preflight.outputs.tag }}" release-assets/* \
             --title "${{ needs.preflight.outputs.tag }}" \
-            --notes "Automated release for Storybook Packager ${{ needs.preflight.outputs.version }}.
+            --notes "Release for Storybook Packager ${{ needs.preflight.outputs.version }}.
 
           Builds are unsigned on all platforms.
 
-          Windows may show a SmartScreen warning because the installer is not code-signed.
-          macOS may block first launch until you allow Storybook Packager from Privacy & Security.
-          Linux users should make the AppImage executable before running it."
+          - Windows may show a SmartScreen warning because the installer is not code-signed.
+          - macOS may block first launch until you allow Storybook Packager from Privacy & Security.
+          - Linux users should make the AppImage executable before running it."
