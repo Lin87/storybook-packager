@@ -31,6 +31,10 @@ Run with npm (lockfile is `package-lock.json`; there is no `packageManager` or `
 
 **There is no `lint` script** — run `npx eslint .`. **There is no aggregate `test` script** — run the two test scripts individually.
 
+## Releases
+
+GitHub Actions owns publishing: `.github/workflows/release.yml` runs on every push to `main`, reads `version` from `package.json`, fails if `v<version>` already exists, builds Windows x64, macOS Apple Silicon (`macos-latest` + `--arm64`), and Linux x64 installers, then creates the tag and published GitHub Release with those installers attached. Do not manually create a duplicate tag/release for the same package version.
+
 ## Tests
 
 No framework: both suites use the built-in `node:test` runner.
@@ -134,7 +138,7 @@ The contract lives in three places and all three must be edited together:
 - **A `<dialog>` nested inside another `<dialog>` shares its `close` event** — it bubbles, so the parent's `onClose` fires too. [src/components/LegalModal.tsx](src/components/LegalModal.tsx) is therefore a sibling of the About dialog, not a child.
 - User-facing behavior changes may require docs/legal updates. When adding or changing accounts, telemetry, analytics, crash reporting, update checks, network requests, third-party integrations, licensing/distribution, data storage, exports, security reporting, accessibility claims, or support/contact flows, review and update [docs/legal/TERMS.md](docs/legal/TERMS.md), [docs/legal/PRIVACY.md](docs/legal/PRIVACY.md), and [README.md](README.md) as needed.
 - Update [AGENTS.md](AGENTS.md) after changes only when the latest implementation changes the architecture, commands, tests, stack, conventions, domain model, gotchas, or other guidance future coding agents rely on.
-- No CI (`.github/` does not exist), no husky, no lint-staged, no Prettier, no `.editorconfig` — formatting is manual, so match the surrounding file.
+- No husky, no lint-staged, no Prettier, no `.editorconfig` — formatting is manual, so match the surrounding file.
 
 ## Conventions
 

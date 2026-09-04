@@ -1,5 +1,7 @@
 # Storybook Packager
 
+[![Build and Release](https://github.com/Lin87/storybook-packager/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/Lin87/storybook-packager/actions/workflows/release.yml)
+
 A desktop content authoring app for **Storybook+** presentations.
 
 Storybook Packager gives authors a GUI for building and maintaining Storybook+ presentations — the outline, the page content, the quizzes, the media assets, and the `sbplus.xml` manifest that the Storybook+ web player reads — without hand-editing XML or shuffling files between folders.
@@ -88,7 +90,7 @@ The app ships as a self-contained build — there is nothing to install alongsid
 | Display | 1024 × 768 or larger. The editor window enforces that as its minimum size |
 | Network | Not required. The app works entirely offline; the only request it makes on its own is the update check described below |
 
-The macOS and Linux builds are produced for the architecture of the machine that built them. An Intel (x64) macOS build runs on Apple Silicon through Rosetta 2.
+Release builds include Windows x64, macOS Apple Silicon, and Linux x64 installers.
 
 ## Installing
 
@@ -151,25 +153,19 @@ npm run start:electron:prod
 npm run build:prod
 ```
 
-This builds the Next.js static export, compiles the Electron main process, and runs `electron-builder` — producing `Storybook Packager Setup <version>.exe` (NSIS) on Windows, `Storybook Packager-<version>.dmg` on macOS, and `Storybook Packager-<version>.AppImage` on Linux, in `dist/`. Each installer can only be built on its own platform.
+This builds the Next.js static export, compiles the Electron main process, and runs `electron-builder` — producing `Storybook Packager Setup <version>.exe` (NSIS) on Windows, `Storybook Packager-<version>.dmg` on macOS, and `Storybook Packager-<version>.AppImage` on Linux, in `dist/`. Each installer can only be built on its own platform; the release workflow builds Windows x64, macOS Apple Silicon, and Linux x64 installers on matching GitHub-hosted runners.
 
 The artifact and shortcut names come from `build.productName`, which must stay in step with the `app.setName('Storybook Packager')` call at the top of [src/electron/main.ts](src/electron/main.ts) — that one sets the userData folder name and the macOS app menu title. The kebab-case `storybook-packager` elsewhere (the npm package name, the `appId`, the repository) is identifier-shaped and intentionally stays lowercase.
 
 ## Releasing
 
-The in-app update check reads the latest published release of [`Lin87/storybook-packager`](https://github.com/Lin87/storybook-packager/releases) from GitHub's public API. To publish a version:
+The in-app update check reads the latest published release of [`Lin87/storybook-packager`](https://github.com/Lin87/storybook-packager/releases) from GitHub's public API. To publish a version, bump `version` in `package.json` and push the change to `main`.
 
-1. Bump `version` in `package.json` — everything else (the About window, the update comparison, the request User-Agent) reads that one field.
-2. `npm run build:prod` on each platform you are shipping.
-3. Tag and publish, attaching the installers:
-
-    ```bash
-    gh release create v0.1.1 dist/*.exe dist/*.dmg dist/*.AppImage --title "v0.1.1" --notes "..."
-    ```
+The [Build and Release](https://github.com/Lin87/storybook-packager/actions/workflows/release.yml) workflow reads that version, fails if the matching `v<version>` tag already exists, builds the Windows x64, macOS Apple Silicon, and Linux x64 installers, creates the `v<version>` tag, and publishes the GitHub Release with the installers attached.
 
 The tag must be `v<version>`, matching `package.json` exactly. `/releases/latest` skips drafts and prereleases, so marking a release as a prerelease is the way to stage a build without notifying anyone. The repository must stay public — the app makes an unauthenticated request and ships no token.
 
-Builds are unsigned on all three platforms, so every release should repeat the platform-specific steps from [Installing](#installing) in its notes — the SmartScreen bypass on Windows and the Privacy & Security → Open Anyway step on macOS. Users who do not expect those warnings tend to assume the download is broken.
+Builds are unsigned on all three platforms, so the automated release notes repeat the platform-specific warnings from [Installing](#installing) — the SmartScreen bypass on Windows and the Privacy & Security → Open Anyway step on macOS. Users who do not expect those warnings tend to assume the download is broken.
 
 ## Project layout
 
