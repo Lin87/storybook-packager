@@ -187,11 +187,12 @@ On first launch the app shows an agreement screen instead of the welcome screen.
 
 Acceptance is recorded per document version in the app's data folder, so materially updated documents are presented again. The in-app copies are generated from `docs/legal/*.md` and `LICENSE` into `public/legal/` by `npm run build:legal`, which runs automatically before `npm run dev` and `npm run build:next`.
 
-## Status
-
-Version 0.1.0, in active development. Known gaps:
+## Known Issues
 
 - The app is not code-signed on any platform, which is why installing and updating carry the warnings described under [Installing](#installing), and why [Updating](#updating) is notify-only rather than automatic.
+- Source preview for video on Brightcove and Kaltura are currently unsupported (not yet implemented).
+- Presentation preview is not yet implemented.
+- Images and Audios in multiple choice/answers quiz are currently wonky.
 
 ## Legal
 
